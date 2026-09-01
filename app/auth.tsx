@@ -1,0 +1,56 @@
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
+import { signIn, signUp } from '../src/core/auth/auth-client';
+import { colors, radius, spacing } from '../src/ui/theme';
+
+export default function AuthScreen() {
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [identifier, setIdentifier] = useState('');
+  const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit() {
+    setError(''); setBusy(true);
+    try {
+      if (mode === 'signin') await signIn(identifier, password);
+      else await signUp({ username, displayName, password, email: email || undefined });
+      router.replace('/');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Something went wrong'); }
+    finally { setBusy(false); }
+  }
+
+  return <View style={styles.screen}>
+    <View style={styles.brand}><Text style={styles.mark}>D</Text><View><Text style={styles.name}>Drustpoll</Text><Text style={styles.tag}>Your world, naturally.</Text></View></View>
+    <View style={styles.card}>
+      <Text style={styles.kicker}>{mode === 'signin' ? 'WELCOME BACK' : 'CREATE YOUR SPACE'}</Text>
+      <Text style={styles.title}>{mode === 'signin' ? 'Come back to what matters.' : 'A social space that belongs to you.'}</Text>
+      <Text style={styles.body}>{mode === 'signin' ? 'Sign in with your Drustpoll account.' : 'Create one account for social, discovery and your storefront.'}</Text>
+      {mode === 'signup' && <>
+        <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Display name" placeholderTextColor={colors.faint} style={styles.input} autoCapitalize="words" />
+        <TextInput value={username} onChangeText={setUsername} placeholder="Username" placeholderTextColor={colors.faint} style={styles.input} autoCapitalize="none" />
+        <TextInput value={email} onChangeText={setEmail} placeholder="Email" placeholderTextColor={colors.faint} style={styles.input} autoCapitalize="none" keyboardType="email-address" />
+      </>}
+      {mode === 'signin' && <TextInput value={identifier} onChangeText={setIdentifier} placeholder="Username, email or phone" placeholderTextColor={colors.faint} style={styles.input} autoCapitalize="none" />}
+      <TextInput value={password} onChangeText={setPassword} placeholder="Password (12+ characters)" placeholderTextColor={colors.faint} style={styles.input} secureTextEntry />
+      {!!error && <Text style={styles.error}>{error}</Text>}
+      <Pressable disabled={busy} onPress={submit} style={({ pressed }) => [styles.button, pressed && styles.pressed, busy && styles.disabled]}>
+        {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{mode === 'signin' ? 'Sign in' : 'Create account'}</Text>}
+      </Pressable>
+      <Pressable onPress={() => { setError(''); setMode(mode === 'signin' ? 'signup' : 'signin'); }} style={styles.switch}>
+        <Text style={styles.switchText}>{mode === 'signin' ? 'New here? Create an account' : 'Already have an account? Sign in'}</Text>
+      </Pressable>
+    </View>
+    <Text style={styles.privacy}>Drustpoll authentication is first-party. Security-sensitive actions require re-authentication.</Text>
+  </View>;
+}
+
+const styles = StyleSheet.create({
+  screen:{flex:1,backgroundColor:colors.background,padding:spacing.xl,justifyContent:'center',gap:spacing.xl},
+  brand:{flexDirection:'row',alignItems:'center',gap:12},mark:{width:46,height:46,borderRadius:14,backgroundColor:colors.dark,color:'#fff',fontSize:25,fontWeight:'900',textAlign:'center',paddingTop:8},name:{fontSize:24,fontWeight:'900',color:colors.ink},tag:{fontSize:12,color:colors.muted,marginTop:2},
+  card:{backgroundColor:colors.surface,borderRadius:radius.xl,padding:spacing.xl,borderWidth:1,borderColor:colors.line,gap:12},kicker:{fontSize:11,fontWeight:'900',letterSpacing:1.5,color:colors.accent},title:{fontSize:29,lineHeight:34,fontWeight:'900',color:colors.ink},body:{fontSize:14,lineHeight:20,color:colors.muted,marginBottom:5},input:{height:52,borderRadius:14,borderWidth:1,borderColor:colors.line,paddingHorizontal:15,color:colors.ink,backgroundColor:colors.background},button:{height:54,borderRadius:15,backgroundColor:colors.dark,alignItems:'center',justifyContent:'center',marginTop:4},buttonText:{color:'#fff',fontWeight:'800',fontSize:16},pressed:{opacity:.86},disabled:{opacity:.6},error:{color:'#B42318',fontSize:13},switch:{alignItems:'center',paddingTop:5},switchText:{color:colors.accent,fontWeight:'700'},privacy:{fontSize:11,lineHeight:17,color:colors.faint,textAlign:'center'}
+});
