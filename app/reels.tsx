@@ -1,0 +1,7 @@
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+export default function Reels() {
+  return <SafeAreaView style={styles.safe}><ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}><Text style={styles.kicker}>DISCOVER</Text><Text style={styles.title}>Reels</Text><Text style={styles.subtitle}>A recommendation surface designed for relevance, diversity and user control.</Text>{['People making things','Ideas worth sharing','Your next rabbit hole'].map((item,i)=><View key={item} style={styles.card}><Text style={styles.number}>0{i+1}</Text><View><Text style={styles.cardTitle}>{item}</Text><Text style={styles.cardBody}>Personalized without locking you into one narrow loop.</Text></View></View>)}</ScrollView></SafeAreaView>;
+}
+const styles=StyleSheet.create({safe:{flex:1,backgroundColor:'#F6F7F9'},content:{padding:20,gap:16},kicker:{fontSize:11,fontWeight:'800',letterSpacing:1.8,color:'#667085'},title:{fontSize:34,fontWeight:'800',color:'#101828'},subtitle:{fontSize:15,lineHeight:22,color:'#667085'},card:{minHeight:170,borderRadius:26,backgroundColor:'#111827',padding:22,flexDirection:'row',alignItems:'flex-end',gap:16},number:{fontSize:12,fontWeight:'800',color:'#98A2B3'},cardTitle:{fontSize:22,fontWeight:'800',color:'#fff'},cardBody:{fontSize:13,lineHeight:19,color:'#D0D5DD',marginTop:6,maxWidth:280}});
