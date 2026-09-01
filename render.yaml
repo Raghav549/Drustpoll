@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: drustpoll-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: drustpoll-db
+          property: connectionString
+      - key: SESSION_PEPPER
+        generateValue: true
+      - key: PASSWORD_PEPPER
+        generateValue: true
+      - key: PUBLIC_ORIGIN
+        sync: false
+
+databases:
+  - name: drustpoll-db
+    databaseName: drustpoll
+    user: drustpoll
