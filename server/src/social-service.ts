@@ -2,6 +2,14 @@ import { query, withTransaction } from './db.js';
 
 export type FeedMode = 'for_you' | 'following';
 
+async function canInteract(actorId:string,targetId:string){
+  if(actorId===targetId)return true;
+  const r=await query(`SELECT NOT EXISTS(
+    SELECT 1 FROM user_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=$2) OR (b.blocker_id=$2 AND b.blocked_id=$1)
+  ) AS allowed`,[actorId,targetId]);
+  return Boolean(r.rows[0]?.allowed);
+}
+
 export async function getProfile(userId: string) {
   const result = await query(`
     SELECT u.id AS user_id,u.username,u.display_name,
@@ -15,6 +23,7 @@ export async function getProfile(userId: string) {
 
 export async function follow(actorId: string, targetId: string) {
   if (actorId === targetId) throw new Error('Cannot follow yourself');
+  if(!await canInteract(actorId,targetId))throw new Error('Interaction blocked');
   const target = await query<{ visibility: string }>('SELECT profile_visibility AS visibility FROM profiles WHERE user_id=$1', [targetId]);
   if (!target.rows[0]) throw new Error('User not found');
   const state = target.rows[0].visibility === 'public' ? 'following' : 'requested';
@@ -30,6 +39,7 @@ export async function unfollow(actorId: string, targetId: string) {
 
 export async function setFollowState(actorId: string, targetId: string, state: 'following'|'blocked'|'requested'|'none') {
   if (actorId === targetId) throw new Error('Invalid relationship');
+  if (state !== 'none' && !await canInteract(actorId,targetId)) throw new Error('Interaction blocked');
   if (state === 'none') return unfollow(actorId,targetId);
   await query(`INSERT INTO follows(follower_id,followed_id,state) VALUES($1,$2,$3)
     ON CONFLICT(follower_id,followed_id) DO UPDATE SET state=EXCLUDED.state`, [actorId,targetId,state]);
@@ -42,7 +52,9 @@ export async function getFeed(userId: string, mode: FeedMode, limit = 30, before
   let filter = `p.deleted_at IS NULL
     AND (p.visibility='public' OR p.author_id=$1 OR EXISTS (
       SELECT 1 FROM follows f WHERE f.follower_id=$1 AND f.followed_id=p.author_id AND f.state='following'
-    ))`;
+    ))
+    AND NOT EXISTS (SELECT 1 FROM user_mutes m WHERE m.muter_id=$1 AND m.muted_id=p.author_id)
+    AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=p.author_id) OR (b.blocker_id=p.author_id AND b.blocked_id=$1))`;
   if (mode === 'following') {
     filter += ` AND (p.author_id=$1 OR EXISTS (SELECT 1 FROM follows f WHERE f.follower_id=$1 AND f.followed_id=p.author_id AND f.state='following'))`;
   }
@@ -86,6 +98,9 @@ export async function createPost(authorId: string, input: { caption?: string; vi
 
 export async function toggleReaction(userId: string, postId: string, reaction = 'like') {
   return withTransaction(async client => {
+    const post=await client.query<{author_id:string}>('SELECT author_id FROM posts WHERE id=$1 AND deleted_at IS NULL',[postId]);
+    if(!post.rowCount)throw new Error('Post not found');
+    if(!await canInteract(userId,post.rows[0].author_id))throw new Error('Interaction blocked');
     const current = await client.query('SELECT reaction FROM post_reactions WHERE user_id=$1 AND post_id=$2',[userId,postId]);
     if (current.rowCount) {
       await client.query('DELETE FROM post_reactions WHERE user_id=$1 AND post_id=$2',[userId,postId]);
@@ -97,6 +112,9 @@ export async function toggleReaction(userId: string, postId: string, reaction = 
 }
 
 export async function toggleSave(userId: string, postId: string) {
+  const post=await query<{author_id:string}>('SELECT author_id FROM posts WHERE id=$1 AND deleted_at IS NULL',[postId]);
+  if(!post.rowCount)throw new Error('Post not found');
+  if(!await canInteract(userId,post.rows[0].author_id))throw new Error('Interaction blocked');
   const current = await query('SELECT 1 FROM post_saves WHERE user_id=$1 AND post_id=$2',[userId,postId]);
   if (current.rowCount) { await query('DELETE FROM post_saves WHERE user_id=$1 AND post_id=$2',[userId,postId]); return {saved:false}; }
   await query('INSERT INTO post_saves(post_id,user_id) VALUES($1,$2)',[postId,userId]);
@@ -106,6 +124,9 @@ export async function toggleSave(userId: string, postId: string) {
 export async function addComment(userId: string, postId: string, body: string, parentId?: string) {
   const text = body.trim();
   if (!text || text.length > 2000) throw new Error('Invalid comment');
+  const post=await query<{author_id:string}>('SELECT author_id FROM posts WHERE id=$1 AND deleted_at IS NULL',[postId]);
+  if(!post.rowCount)throw new Error('Post not found');
+  if(!await canInteract(userId,post.rows[0].author_id))throw new Error('Interaction blocked');
   const result = await query<{id:string;created_at:Date}>('INSERT INTO comments(post_id,author_id,parent_id,body) VALUES($1,$2,$3,$4) RETURNING id,created_at',[postId,userId,parentId ?? null,text]);
   return { id:result.rows[0].id, createdAt:result.rows[0].created_at.toISOString() };
 }
