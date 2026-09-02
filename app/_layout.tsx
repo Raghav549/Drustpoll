@@ -3,5 +3,5 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../src/core/auth/AuthProvider';
 
 export default function RootLayout() {
-  return <AuthProvider><StatusBar style="dark" /><Stack screenOptions={{ headerShown:false, animation:'fade' }} /></AuthProvider>;
+  return <AuthProvider><StatusBar style="dark" /><Stack screenOptions={{ headerShown:false, animation:'fade', animationDuration:180 }} /></AuthProvider>;
 }
