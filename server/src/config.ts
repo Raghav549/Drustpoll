@@ -13,6 +13,21 @@ export const config = {
   passwordPepper: required('PASSWORD_PEPPER'),
   publicOrigin: process.env.PUBLIC_ORIGIN ?? 'https://drustpoll.app',
   secureCookies: process.env.NODE_ENV !== 'development',
+  storage: {
+    endpoint: process.env.S3_ENDPOINT ?? '',
+    region: process.env.S3_REGION ?? 'auto',
+    bucket: process.env.S3_BUCKET ?? '',
+    accessKeyId: process.env.S3_ACCESS_KEY_ID ?? '',
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? '',
+    forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
+    uploadTtlSeconds: Math.min(Math.max(Number(process.env.S3_UPLOAD_TTL_SECONDS ?? 900), 60), 3600),
+    playbackTtlSeconds: Math.min(Math.max(Number(process.env.S3_PLAYBACK_TTL_SECONDS ?? 300), 60), 1800),
+  },
+  extraction: {
+    endpoint: process.env.MULTIMODAL_EXTRACTOR_URL ?? '',
+    apiKey: process.env.MULTIMODAL_EXTRACTOR_API_KEY ?? '',
+    timeoutMs: Math.min(Math.max(Number(process.env.MULTIMODAL_EXTRACTOR_TIMEOUT_MS ?? 30000), 1000), 120000),
+  },
 };
 
 export const durations = {
