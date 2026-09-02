@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Link, router } from 'expo-router';
+import { Link } from 'expo-router';
 import { AppShell } from '../src/ui/AppShell';
 import { createPost } from '../src/api/client';
 import { colors, radius, spacing, type } from '../src/ui/theme';
