@@ -56,7 +56,6 @@ const server=createServer(async(req,res)=>{
     const reactionMatch=url.pathname.match(/^\/v1\/posts\/([^/]+)\/reaction$/);if(req.method==='POST'&&reactionMatch)return json(res,200,await toggleReaction(session.userId,reactionMatch[1]));
     const saveMatch=url.pathname.match(/^\/v1\/posts\/([^/]+)\/save$/);if(req.method==='POST'&&saveMatch)return json(res,200,await toggleSave(session.userId,saveMatch[1]));
     const commentMatch=url.pathname.match(/^\/v1\/posts\/([^/]+)\/comments$/);if(req.method==='POST'&&commentMatch){const input=await body(req);return json(res,201,await addComment(session.userId,commentMatch[1],String(input.body??''),input.parentId?String(input.parentId):undefined);}
-
     return json(res,404,{error:'Not found'});
   }catch(error){const message=error instanceof Error?error.message:'Request failed';const status=/Unauthenticated/i.test(message)?401:/too many/i.test(message)?429:/already in use|invalid|incorrect|expired|required|not found|Cannot/i.test(message)?400:500;return json(res,status,{error:status===500?'Internal server error':message});}
 });
