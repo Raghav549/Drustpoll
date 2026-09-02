@@ -82,15 +82,24 @@ export async function getFeed(userId: string, mode: FeedMode, limit = 30, before
   return { items: rows, nextCursor: result.rows.length > size ? rows[rows.length - 1]?.created_at ?? null : null };
 }
 
-export async function createPost(authorId: string, input: { caption?: string; visibility?: 'public'|'followers'|'private'; media?: Array<{ type:'image'|'video'; storageKey:string; width?:number; height?:number; durationMs?:number; alt?:string }> }) {
+export async function createPost(authorId: string, input: { caption?: string; visibility?: 'public'|'followers'|'private'; mediaAssetIds?: string[] }) {
   const caption = (input.caption ?? '').trim();
   if (caption.length > 2200) throw new Error('Caption is too long');
   const visibility = input.visibility ?? 'public';
+  const assetIds = Array.from(new Set(input.mediaAssetIds ?? [])).map(String).filter(Boolean);
+  if (assetIds.length > 10) throw new Error('Too many media assets');
+
   return withTransaction(async client => {
     const post = await client.query<{ id:string; created_at:Date }>('INSERT INTO posts(author_id,caption,visibility) VALUES($1,$2,$3) RETURNING id,created_at',[authorId,caption,visibility]);
-    for (const [index, media] of (input.media ?? []).entries()) {
-      if (!media.storageKey.trim()) throw new Error('Media storage key is required');
-      await client.query('INSERT INTO post_media(post_id,media_type,storage_key,width,height,duration_ms,alt_text,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7,$8)', [post.rows[0].id,media.type,media.storageKey.trim(),media.width ?? null,media.height ?? null,media.durationMs ?? null,media.alt?.trim().slice(0,500) ?? null,index]);
+    if (assetIds.length) {
+      const assets = await client.query<{id:string;media_type:'image'|'video';storage_key:string;width:number|null;height:number|null;duration_ms:number|null}>('SELECT id,media_type,storage_key,width,height,duration_ms FROM media_assets WHERE owner_id=$1 AND status=\'ready\' AND moderation_status=\'approved\' AND id=ANY($2::uuid[]) FOR SHARE',[authorId,assetIds]);
+      if (assets.rowCount !== assetIds.length) throw new Error('One or more media assets are not ready');
+      const byId = new Map(assets.rows.map(asset => [asset.id, asset]));
+      for (const [index, assetId] of assetIds.entries()) {
+        const asset = byId.get(assetId);
+        if (!asset) throw new Error('Media asset not found');
+        await client.query('INSERT INTO post_media(post_id,media_type,storage_key,width,height,duration_ms,alt_text,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7,$8)', [post.rows[0].id,asset.media_type,asset.storage_key,asset.width,asset.height,asset.duration_ms,null,index]);
+      }
     }
     return { id: post.rows[0].id, createdAt: post.rows[0].created_at.toISOString() };
   });
