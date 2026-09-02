@@ -4,5 +4,6 @@
     "strict": true,
     "baseUrl": ".",
     "paths": { "@/*": ["./*"] }
-  }
+  },
+  "exclude": ["server"]
 }
