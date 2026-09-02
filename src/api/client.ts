@@ -35,3 +35,8 @@ export type Notification={id:string;actor_id:string|null;type:string;object_id:s
 export async function getNotifications(limit=30,before?:string){return api<{notifications:Notification[];nextBefore:string|null}>(`/v1/notifications?limit=${Math.min(Math.max(limit,1),100)}${before?`&before=${encodeURIComponent(before)}`:''}`);}
 export async function markAllNotificationsRead(){return api<{updated:number}>('/v1/notifications/read-all',{method:'POST'});}
 export async function markNotificationRead(id:string){return api<{ok:boolean}>(`/v1/notifications/${encodeURIComponent(id)}/read`,{method:'POST'});}
+export type SafetyState={blocked:boolean;muted:boolean};
+export async function getSafetyState(targetUserId:string){return api<SafetyState>(`/v1/safety/state?targetUserId=${encodeURIComponent(targetUserId)}`);}
+export async function setBlocked(targetUserId:string,blocked:boolean){return api(`/v1/safety/block`,{method:blocked?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
+export async function setMuted(targetUserId:string,muted:boolean){return api(`/v1/safety/mute`,{method:muted?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
+export async function reportTarget(target:{type:string;id:string},reason:string,details=''){return api('/v1/safety/report',{method:'POST',body:JSON.stringify({target,reason,details})});}
