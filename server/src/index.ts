@@ -4,6 +4,7 @@ import { authenticate, changePassword, createReauthGrant, listSessions, login, r
 import { health } from './health.js';
 import { addComment, createPost, follow, getFeed, getProfile, setFollowState, toggleReaction, toggleSave, unfollow } from './social-service.js';
 import { recordFeedEvents } from './feed-events-service.js';
+import { addCartItem, createProduct, getCart, getProduct, listSellerProducts, placeOrder, updateCartItem } from './commerce-service.js';
 
 const json = (res: ServerResponse, status: number, body: unknown) => {
   res.statusCode = status;
@@ -27,7 +28,6 @@ const server=createServer(async(req,res)=>{
     const url=new URL(req.url??'/',`http://${req.headers.host??'localhost'}`);
     const ip=req.headers['x-forwarded-for']?.toString().split(',')[0]?.trim()??req.socket.remoteAddress??'unknown';
     if(req.method==='GET'&&url.pathname==='/health')return json(res,200,await health());
-
     if(req.method==='POST'&&url.pathname==='/v1/auth/signup'){const result=await signup(await body(req),ip);setSessionCookie(res,result.token);return json(res,201,{userId:result.userId,deviceId:result.deviceId,expiresAt:result.expiresAt,refreshExpiresAt:result.refreshExpiresAt,refreshToken:result.refreshToken,token:result.token});}
     if(req.method==='POST'&&url.pathname==='/v1/auth/login'){const result=await login(await body(req),ip);setSessionCookie(res,result.token);return json(res,200,{userId:result.userId,deviceId:result.deviceId,expiresAt:result.expiresAt,refreshExpiresAt:result.refreshExpiresAt,refreshToken:result.refreshToken,token:result.token});}
     if(req.method==='POST'&&url.pathname==='/v1/auth/refresh'){const input=await body(req);const result=await refresh(String(input.refreshToken??''),ip);setSessionCookie(res,result.token);return json(res,200,{userId:result.userId,deviceId:result.deviceId,expiresAt:result.expiresAt,refreshExpiresAt:result.refreshExpiresAt,refreshToken:result.refreshToken,token:result.token});}
@@ -55,8 +55,17 @@ const server=createServer(async(req,res)=>{
     if(req.method==='POST'&&url.pathname==='/v1/posts')return json(res,201,await createPost(session.userId,await body(req)));
     const reactionMatch=url.pathname.match(/^\/v1\/posts\/([^/]+)\/reaction$/);if(req.method==='POST'&&reactionMatch)return json(res,200,await toggleReaction(session.userId,reactionMatch[1]));
     const saveMatch=url.pathname.match(/^\/v1\/posts\/([^/]+)\/save$/);if(req.method==='POST'&&saveMatch)return json(res,200,await toggleSave(session.userId,saveMatch[1]));
-    const commentMatch=url.pathname.match(/^\/v1\/posts\/([^/]+)\/comments$/);if(req.method==='POST'&&commentMatch){const input=await body(req);return json(res,201,await addComment(session.userId,commentMatch[1],String(input.body??''),input.parentId?String(input.parentId):undefined);}
+    const commentMatch=url.pathname.match(/^\/v1\/posts\/([^/]+)\/comments$/);if(req.method==='POST'&&commentMatch){const input=await body(req);return json(res,201,await addComment(session.userId,commentMatch[1],String(input.body??''),input.parentId?String(input.parentId):undefined));}
+
+    if(req.method==='GET'&&url.pathname==='/v1/shop/products'){const sellerId=url.searchParams.get('sellerId')??session.userId;return json(res,200,{products:await listSellerProducts(sellerId)});}
+    if(req.method==='POST'&&url.pathname==='/v1/shop/products')return json(res,201,await createProduct(session.userId,await body(req)));
+    const productMatch=url.pathname.match(/^\/v1\/shop\/products\/([^/]+)$/);if(req.method==='GET'&&productMatch)return json(res,200,{product:await getProduct(productMatch[1])});
+    if(req.method==='GET'&&url.pathname==='/v1/cart')return json(res,200,await getCart(session.userId));
+    if(req.method==='POST'&&url.pathname==='/v1/cart/items'){const input=await body(req);return json(res,200,await addCartItem(session.userId,String(input.productId??''),Number(input.quantity??1)));}
+    if(req.method==='PATCH'&&url.pathname==='/v1/cart/items'){const input=await body(req);return json(res,200,await updateCartItem(session.userId,String(input.productId??''),Number(input.quantity??0)));}
+    if(req.method==='POST'&&url.pathname==='/v1/orders'){return json(res,201,await placeOrder(session.userId));}
+
     return json(res,404,{error:'Not found'});
-  }catch(error){const message=error instanceof Error?error.message:'Request failed';const status=/Unauthenticated/i.test(message)?401:/too many/i.test(message)?429:/already in use|invalid|incorrect|expired|required|not found|Cannot/i.test(message)?400:500;return json(res,status,{error:status===500?'Internal server error':message});}
+  }catch(error){const message=error instanceof Error?error.message:'Request failed';const status=/Unauthenticated/i.test(message)?401:/too many/i.test(message)?429:/already in use|invalid|incorrect|expired|required|not found|Cannot|insufficient|inactive/i.test(message)?400:500;return json(res,status,{error:status===500?'Internal server error':message});}
 });
 server.listen(config.port,()=>console.log(`Drustpoll auth server listening on :${config.port}`));
