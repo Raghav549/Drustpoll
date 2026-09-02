@@ -14,7 +14,7 @@ import { listNotifications, markAllNotificationsRead, markNotificationRead, unre
 import { searchDiscovery, type DiscoveryKind } from './discovery-service.js';
 import { createConversation, listConversations, listMessages, markConversationRead, sendEncryptedMessage, upsertDeviceKeyBundle, listDeviceKeyBundles } from './messaging-service.js';
 import { blockUser, getSafetyState, muteUser, reportContent, unblockUser, unmuteUser } from './safety-service.js';
-import { completeUpload, createUploadIntent, getMediaAsset, getPlaybackUrl } from './media-service.js';
+import { completeUpload, createUploadIntent, getPlaybackUrl } from './media-service.js';
 import { getPrivacySettings, updatePrivacySettings } from './privacy-service.js';
 import { allowRequest, securityHeaders } from './security-middleware.js';
 import { getBuyerOrder, listBuyerOrders, cancelPendingOrder } from './order-service.js';
@@ -28,7 +28,6 @@ function sessionCookie(req:IncomingMessage){return cookie(req,config.secureCooki
 function setCookie(res:ServerResponse,token:string,maxAge=1800){const secure=config.secureCookies?'; Secure':'';const name=config.secureCookies?'__Host-drustpoll_session':'drustpoll_session';res.setHeader('Set-Cookie',`${name}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict${secure}; Max-Age=${maxAge}`);}
 function clearCookie(res:ServerResponse){setCookie(res,'',0);}
 async function auth(req:IncomingMessage){return authenticate(bearer(req)??sessionCookie(req)??'');}
-
 const server=createServer(async(req,res)=>{try{
  if(!allowRequest(req))return json(res,429,{error:'Too many requests'});
  if(req.method==='OPTIONS'){securityHeaders(res);res.statusCode=204;res.end();return;}
@@ -86,7 +85,7 @@ const server=createServer(async(req,res)=>{try{
  if(req.method==='POST'&&url.pathname==='/v1/posts')return json(res,201,await createPost(session.userId,await body(req)));
  const rx=url.pathname.match(/^\/v1\/posts\/([^/]+)\/reaction$/);if(req.method==='POST'&&rx)return json(res,200,await toggleReaction(session.userId,rx[1]));
  const sv=url.pathname.match(/^\/v1\/posts\/([^/]+)\/save$/);if(req.method==='POST'&&sv)return json(res,200,await toggleSave(session.userId,sv[1]));
- const cm=url.pathname.match(/^\/v1\/posts\/([^/]+)\/comments$/);if(req.method==='POST'&&cm){const i=await body(req);return json(res,201,await addComment(session.userId,cm[1],String(i.body??''),i.parentId?String(i.parentId):undefined);}
+ const cm=url.pathname.match(/^\/v1\/posts\/([^/]+)\/comments$/);if(req.method==='POST'&&cm){const i=await body(req);return json(res,201,await addComment(session.userId,cm[1],String(i.body??''),i.parentId?String(i.parentId):undefined));}
  if(req.method==='GET'&&url.pathname==='/v1/shop/products')return json(res,200,{products:await listSellerProducts(url.searchParams.get('sellerId')??session.userId)});
  if(req.method==='POST'&&url.pathname==='/v1/shop/products')return json(res,201,await createProduct(session.userId,await body(req)));
  const pr=url.pathname.match(/^\/v1\/shop\/products\/([^/]+)$/);if(req.method==='GET'&&pr)return json(res,200,{product:await getProduct(pr[1])});
