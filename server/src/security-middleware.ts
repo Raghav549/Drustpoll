@@ -30,6 +30,8 @@ export function allowRequest(req:IncomingMessage){
 export function securityHeaders(res:ServerResponse){
  res.setHeader('X-Content-Type-Options','nosniff');
  res.setHeader('Referrer-Policy','no-referrer');
- res.setHeader('Permissions-Policy','camera=(),microphone=(),geolocation=()');
+ // Keep browser capabilities disabled by default outside the app origin while
+ // allowing explicit, user-granted camera/microphone/location flows on-origin.
+ res.setHeader('Permissions-Policy','camera=(self),microphone=(self),geolocation=(self)');
  res.setHeader('Content-Security-Policy',"default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
 }
