@@ -8,9 +8,51 @@ export async function searchDiscovery(userId: string, rawQuery: string, kind: Di
   if (!q) return { query: '', people: [], posts: [], products: [] };
   const size = Math.min(Math.max(Math.trunc(limit), 1), 50);
   const pattern = `%${q}%`;
-  const peopleRaw = kind === 'posts' || kind === 'products' ? [] : (await query(`SELECT u.id,u.username,u.display_name,p.avatar_url,COALESCE((SELECT count(*)::int FROM follows f WHERE f.followed_id=u.id AND f.state='following'),0) follower_count,EXISTS(SELECT 1 FROM follows me WHERE me.follower_id=$1 AND me.followed_id=u.id AND me.state='following') following,CASE WHEN lower(u.username)=lower($2) THEN 1 ELSE 0 END exact,CASE WHEN lower(u.username) LIKE lower($2)||'%' THEN 1 ELSE 0 END prefix,u.username text FROM users u LEFT JOIN profiles p ON p.user_id=u.id WHERE lower(u.username) LIKE lower($3) OR lower(COALESCE(p.display_name,'')) LIKE lower($3) OR lower(u.username) % lower($2) OR lower(COALESCE(p.display_name,'')) % lower($2) LIMIT $4`, [q, q, pattern, size * 4])).rows;
-  const postsRaw = kind === 'people' || kind === 'products' ? [] : (await query(`SELECT p.id,p.author_id,p.caption,p.created_at,u.username,u.display_name,pf.avatar_url,COALESCE((SELECT count(*)::int FROM post_reactions r WHERE r.post_id=p.id),0) like_count,CASE WHEN lower(p.caption)=lower($2) THEN 1 ELSE 0 END exact,CASE WHEN lower(p.caption) LIKE lower($2)||'%' THEN 1 ELSE 0 END prefix,p.caption text FROM posts p JOIN users u ON u.id=p.author_id LEFT JOIN profiles pf ON pf.user_id=u.id WHERE p.deleted_at IS NULL AND p.visibility='public' AND (lower(p.caption) LIKE lower($1) OR lower(p.caption) % lower($2)) LIMIT $3`, [pattern, q, size * 4])).rows;
-  const productsRaw = kind === 'people' || kind === 'posts' ? [] : (await query(`SELECT pr.id,pr.title,pr.description,pr.price_minor,pr.currency,pr.inventory,s.owner_id seller_id,s.name shop_name,pr.created_at,CASE WHEN lower(pr.title)=lower($2) THEN 1 ELSE 0 END exact,CASE WHEN lower(pr.title) LIKE lower($2)||'%' THEN 1 ELSE 0 END prefix,pr.title||' '||pr.description||' '||s.name text FROM products pr JOIN shops s ON s.id=pr.shop_id WHERE pr.status='active' AND s.status='active' AND pr.inventory>0 AND (lower(pr.title) LIKE lower($1) OR lower(pr.description) LIKE lower($1) OR lower(s.name) LIKE lower($1) OR lower(pr.title) % lower($2)) LIMIT $3`, [pattern, q, size * 4])).rows;
+
+  // Discovery is an explicit privacy boundary: profiles that opt out of
+  // discoverability do not become searchable, except to their owner.
+  const peopleRaw = kind === 'posts' || kind === 'products' ? [] : (await query(`
+    SELECT u.id,u.username,u.display_name,p.avatar_url,
+      COALESCE((SELECT count(*)::int FROM follows f WHERE f.followed_id=u.id AND f.state='following'),0) follower_count,
+      EXISTS(SELECT 1 FROM follows me WHERE me.follower_id=$1 AND me.followed_id=u.id AND me.state='following') following,
+      CASE WHEN lower(u.username)=lower($2) THEN 1 ELSE 0 END exact,
+      CASE WHEN lower(u.username) LIKE lower($2)||'%' THEN 1 ELSE 0 END prefix,
+      u.username text
+    FROM users u LEFT JOIN profiles p ON p.user_id=u.id
+    WHERE (u.id=$1 OR COALESCE(p.discoverability,true)=true)
+      AND (lower(u.username) LIKE lower($3) OR lower(COALESCE(p.display_name,'')) LIKE lower($3))
+    LIMIT $4`, [userId, q, pattern, size * 4])).rows;
+
+  const postsRaw = kind === 'people' || kind === 'products' ? [] : (await query(`
+    SELECT p.id,p.author_id,p.caption,p.created_at,u.username,u.display_name,pf.avatar_url,
+      COALESCE((SELECT count(*)::int FROM post_reactions r WHERE r.post_id=p.id),0) like_count,
+      CASE WHEN lower(p.caption)=lower($2) THEN 1 ELSE 0 END exact,
+      CASE WHEN lower(p.caption) LIKE lower($2)||'%' THEN 1 ELSE 0 END prefix,
+      p.caption text
+    FROM posts p JOIN users u ON u.id=p.author_id LEFT JOIN profiles pf ON pf.user_id=u.id
+    WHERE p.deleted_at IS NULL AND p.visibility='public'
+      AND (p.author_id=$4 OR COALESCE(pf.discoverability,true)=true)
+      AND lower(p.caption) LIKE lower($1)
+    LIMIT $3`, [pattern, q, size * 4, userId])).rows;
+
+  const productsRaw = kind === 'people' || kind === 'posts' ? [] : (await query(`
+    SELECT pr.id,pr.title,pr.description,pr.price_minor,pr.currency,pr.inventory,
+      s.owner_id seller_id,s.name shop_name,pr.created_at,
+      CASE WHEN lower(pr.title)=lower($2) THEN 1 ELSE 0 END exact,
+      CASE WHEN lower(pr.title) LIKE lower($2)||'%' THEN 1 ELSE 0 END prefix,
+      pr.title||' '||pr.description||' '||s.name text
+    FROM products pr JOIN shops s ON s.id=pr.shop_id
+    LEFT JOIN profiles seller_profile ON seller_profile.user_id=s.owner_id
+    WHERE pr.status='active' AND s.status='active' AND pr.inventory>0
+      AND (s.owner_id=$4 OR COALESCE(seller_profile.discoverability,true)=true)
+      AND (lower(pr.title) LIKE lower($1) OR lower(pr.description) LIKE lower($1) OR lower(s.name) LIKE lower($1))
+    LIMIT $3`, [pattern, q, size * 4, userId])).rows;
+
   const normalise=(rows:any[],candidateKind:RetrievalKind)=>rows.map(row=>({...row,kind:candidateKind,popularity:Math.min(1,Number(row.follower_count??row.like_count??0)/10000),freshness:row.created_at?Math.max(0,Math.min(1,1-(Date.now()-new Date(row.created_at).getTime())/(90*86400000))):.5,personal:row.following?.7:.1}));
-  return { query:q, people:rankDiscoveryCandidates(normalise(peopleRaw,'people'),q).slice(0,size), posts:rankDiscoveryCandidates(normalise(postsRaw,'posts'),q).slice(0,size), products:rankDiscoveryCandidates(normalise(productsRaw,'products'),q).slice(0,size) };
+  return {
+    query:q,
+    people:rankDiscoveryCandidates(normalise(peopleRaw,'people'),q).slice(0,size),
+    posts:rankDiscoveryCandidates(normalise(postsRaw,'posts'),q).slice(0,size),
+    products:rankDiscoveryCandidates(normalise(productsRaw,'products'),q).slice(0,size)
+  };
 }
