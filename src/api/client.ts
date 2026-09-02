@@ -40,3 +40,6 @@ export async function getSafetyState(targetUserId:string){return api<SafetyState
 export async function setBlocked(targetUserId:string,blocked:boolean){return api(`/v1/safety/block`,{method:blocked?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
 export async function setMuted(targetUserId:string,muted:boolean){return api(`/v1/safety/mute`,{method:muted?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
 export async function reportTarget(target:{type:string;id:string},reason:string,details=''){return api('/v1/safety/report',{method:'POST',body:JSON.stringify({target,reason,details})});}
+export type SellerProduct={id:string;shop_id:string;seller_id:string;title:string;description:string;price_minor:number;currency:string;inventory:number;status:string;created_at:string;updated_at:string;category?:string|null};
+export async function getSellerProducts(){return api<{products:SellerProduct[]}>('/v1/shop/products');}
+export async function createSellerProduct(input:{title:string;description?:string;priceMinor:number;currency?:string;inventory?:number;category?:string;shopName?:string}){return api<{id:string;createdAt:string}>('/v1/shop/products',{method:'POST',body:JSON.stringify(input)});}
