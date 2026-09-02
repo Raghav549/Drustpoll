@@ -18,6 +18,7 @@ import { completeUpload, createUploadIntent, getMediaAsset, getPlaybackUrl } fro
 import { getPrivacySettings, updatePrivacySettings } from './privacy-service.js';
 import { allowRequest, securityHeaders } from './security-middleware.js';
 import { getBuyerOrder, listBuyerOrders, cancelPendingOrder } from './order-service.js';
+import { recordUiMeasurements } from './measurement-service.js';
 
 const json=(res:ServerResponse,status:number,body:unknown)=>{securityHeaders(res);res.statusCode=status;res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(JSON.stringify(body));};
 async function body(req:IncomingMessage):Promise<any>{let data='';for await(const chunk of req){data+=chunk;if(Buffer.byteLength(data)>256*1024)throw new Error('Request too large');}return data?JSON.parse(data):{};}
@@ -60,7 +61,9 @@ const server=createServer(async(req,res)=>{try{
  if(req.method==='POST'&&url.pathname==='/v1/recommendation/exposure'){const i=await body(req);return json(res,202,await recordRecommendationExposure(session.userId,Array.isArray(i.items)?i.items:[]));}
  if(req.method==='POST'&&url.pathname==='/v1/recommendation/experiment/assign'){const i=await body(req);return json(res,200,await assignRecommendationVariant(session.userId,String(i.key??''),Array.isArray(i.variants)?i.variants.map(String):undefined));}
  if(req.method==='POST'&&url.pathname==='/v1/recommendation/metrics'){const i=await body(req);return json(res,202,await upsertRecommendationMetric({...i,userId:session.userId}));}
- if(req.method==='GET'&&url.pathname==='/v1/recommendation/offline-evaluation'){const start=url.searchParams.get('start'),end=url.searchParams.get('end');if(!start||!end)return json(res,400,{error:'start and end required'});return json(res,200,{metrics:await evaluateRecommendationWindow(start,end,url.searchParams.get('experimentId')??undefined)});}
+ if(req.method==='GET'&&url.pathname==='/v1/recommendation/offline-evaluation'){const start=url.searchParams.get('start'),end=url.searchParams.get('end');if(!start||!end)return json(res,400,{error:'start and end required'});return json(res,200,{metrics:await evaluateRecommendationWindow(start,end,url.searchParams.get('experimentId')??undefined)});
+ if(req.method==='POST'&&url.pathname==='/v1/measurements/ui'){const i=await body(req);return json(res,202,await recordUiMeasurements(session.userId,Array.isArray(i.events)?i.events:[]));}
+ }
  if(req.method==='GET'&&url.pathname==='/v1/messages/conversations')return json(res,200,await listConversations(session.userId,Number(url.searchParams.get('limit')??30)));
  if(req.method==='POST'&&url.pathname==='/v1/messages/conversations'){const i=await body(req);return json(res,201,await createConversation(session.userId,Array.isArray(i.participantIds)?i.participantIds.map(String):[]));}
  if(req.method==='POST'&&url.pathname==='/v1/messages/device-keys'){const i=await body(req);return json(res,200,await upsertDeviceKeyBundle(session.userId,{deviceId:String(i.deviceId??''),identityKey:String(i.identityKey??''),signedPreKey:String(i.signedPreKey??''),signedPreKeySignature:String(i.signedPreKeySignature??''),keyVersion:Number(i.keyVersion??1)}));}
@@ -84,7 +87,7 @@ const server=createServer(async(req,res)=>{try{
  if(req.method==='POST'&&url.pathname==='/v1/posts')return json(res,201,await createPost(session.userId,await body(req)));
  const rx=url.pathname.match(/^\/v1\/posts\/([^/]+)\/reaction$/);if(req.method==='POST'&&rx)return json(res,200,await toggleReaction(session.userId,rx[1]));
  const sv=url.pathname.match(/^\/v1\/posts\/([^/]+)\/save$/);if(req.method==='POST'&&sv)return json(res,200,await toggleSave(session.userId,sv[1]));
- const cm=url.pathname.match(/^\/v1\/posts\/([^/]+)\/comments$/);if(req.method==='POST'&&cm){const i=await body(req);return json(res,201,await addComment(session.userId,cm[1],String(i.body??''),i.parentId?String(i.parentId):undefined));}
+ const cm=url.pathname.match(/^\/v1\/posts\/([^/]+)\/comments$/);if(req.method==='POST'&&cm){const i=await body(req);return json(res,201,await addComment(session.userId,cm[1],String(i.body??''),i.parentId?String(i.parentId):undefined);}
  if(req.method==='GET'&&url.pathname==='/v1/shop/products')return json(res,200,{products:await listSellerProducts(url.searchParams.get('sellerId')??session.userId)});
  if(req.method==='POST'&&url.pathname==='/v1/shop/products')return json(res,201,await createProduct(session.userId,await body(req)));
  const pr=url.pathname.match(/^\/v1\/shop\/products\/([^/]+)$/);if(req.method==='GET'&&pr)return json(res,200,{product:await getProduct(pr[1])});
