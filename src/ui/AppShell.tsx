@@ -76,6 +76,6 @@ const styles = StyleSheet.create({
   iconActive: { backgroundColor: colors.brandSoft },
   icon: { fontSize: 22, lineHeight: 24, color: colors.muted, fontWeight: '600' },
   iconActiveText: { color: colors.brand, fontWeight: '800' },
-  label: { fontSize: type.labelSM, color: colors.faint, fontWeight: '650' },
+  label: { fontSize: type.labelSM, color: colors.faint, fontWeight: '600' },
   labelActive: { color: colors.ink, fontWeight: '800' },
 });
