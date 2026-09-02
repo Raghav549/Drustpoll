@@ -89,13 +89,12 @@ A recommendation system must not define the user by a narrow behavioral history.
 
 ## Research-backed product behavior
 
-Recent research supports moving recommendation design beyond raw engagement optimization toward user agency, transparency, diversity, fairness and long-term value. A 2026 short-video recommender study found that transparent, user-friendly controls can increase perceived empowerment and understanding of how recommendations steer attention. citeturn0search0turn0search9
+Recent evidence supports moving recommendation design beyond raw engagement optimization toward user agency, transparency, diversity, fairness and long-term value.
 
-A 2026 review of video recommender research synthesizes more than 572 academic publications and argues for multidimensional diversity, multimodality, fairness, transparency and human-centered trustworthy recommendation. citeturn0search2
-
-A 2026 multi-objective recommendation study explicitly combines accuracy, fairness and serendipity rather than optimizing a single objective, supporting Drustpoll's multi-objective ranking direction. citeturn0search3
-
-A 2026 recommender-systems perspective argues for re-centering evaluation on user agency, transparency, fairness, privacy and long-term welfare rather than system-centric proxy metrics. citeturn0search1
+- Fabbri et al. (2026), *Feeding the (short-video) feed: a design proposal for user control of social media recommender systems under the Digital Services Act*, International Journal of Human-Computer Studies, 214, 103811. The study reports that transparent, user-friendly controls can support perceived empowerment and understanding of recommendation steering.
+- *Multidimensional diversity in video recommender systems: a holistic framework of literature gaps and future directions* (2026), Intelligent Systems with Applications, 31, 200724. The review synthesizes more than 572 academic publications and emphasizes multidimensional diversity, multimodality, fairness, transparency and human-centered trustworthy recommendation.
+- Khaitan & Shrivastava (2026), *Developing Fairness, Accuracy, and Serendipity Objective Functions for Recommendation System and Establishing Trade-off through Multi-Objective Evolutionary Optimization*, Information Processing & Management, 63(4), 104604. The work explicitly treats accuracy, fairness and serendipity as competing objectives rather than optimizing a single engagement proxy.
+- Pomo et al. (2026), *Re-centering the user in recommender system research*, International Journal of Human-Computer Studies. The special-issue introduction argues for user agency, transparency, fairness, privacy and long-term welfare as central evaluation concerns.
 
 ## Drustpoll interaction laws
 
