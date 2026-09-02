@@ -6,87 +6,29 @@ async function ensureShop(ownerId: string, requestedName?: string) {
   const existing = await query<{id:string}>('SELECT id FROM shops WHERE owner_id=$1 LIMIT 1',[ownerId]);
   if (existing.rows[0]) return existing.rows[0].id;
   const name = (requestedName ?? 'My Shop').trim().slice(0,120) || 'My Shop';
-  const base = name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60) || 'shop';
-  const slug = `${base}-${ownerId.slice(0,8)}`;
-  const created = await query<{id:string}>('INSERT INTO shops(owner_id,name,slug) VALUES($1,$2,$3) RETURNING id',[ownerId,name,slug]);
+  const created = await query<{id:string}>('INSERT INTO shops(owner_id,name) VALUES($1,$2) RETURNING id',[ownerId,name]);
   return created.rows[0].id;
 }
 
 export async function createProduct(sellerId: string, input: ProductInput) {
-  const title = String(input.title ?? '').trim();
-  const priceMinor = Number(input.priceMinor);
-  const inventory = Number(input.inventory ?? 0);
-  const currency = String(input.currency ?? 'INR').toUpperCase();
-  if (!title || title.length > 200) throw new Error('Invalid product title');
-  if (!Number.isSafeInteger(priceMinor) || priceMinor < 0) throw new Error('Invalid product price');
-  if (!Number.isSafeInteger(inventory) || inventory < 0) throw new Error('Invalid inventory');
-  if (!/^[A-Z]{3}$/.test(currency)) throw new Error('Invalid currency');
-  const shopId = await ensureShop(sellerId,input.shopName);
-  const result = await query<{id:string;created_at:Date}>('INSERT INTO shop_products(shop_id,seller_id,title,description,price_minor,currency,inventory,media) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,created_at',[shopId,sellerId,title,String(input.description ?? '').trim().slice(0,10000),priceMinor,currency,inventory,JSON.stringify(Array.isArray(input.media)?input.media.slice(0,20):[])]);
+  const title=String(input.title??'').trim(), priceMinor=Number(input.priceMinor), inventory=Number(input.inventory??0), currency=String(input.currency??'INR').toUpperCase();
+  if(!title||title.length>200)throw new Error('Invalid product title');
+  if(!Number.isSafeInteger(priceMinor)||priceMinor<0)throw new Error('Invalid product price');
+  if(!Number.isSafeInteger(inventory)||inventory<0)throw new Error('Invalid inventory');
+  if(!/^[A-Z]{3}$/.test(currency))throw new Error('Invalid currency');
+  const shopId=await ensureShop(sellerId,input.shopName);
+  const result=await query<{id:string;created_at:Date}>('INSERT INTO products(shop_id,title,description,price_minor,currency,inventory,status) VALUES($1,$2,$3,$4,$5,$6,\'active\') RETURNING id,created_at',[shopId,title,String(input.description??'').trim().slice(0,10000),priceMinor,currency,inventory]);
+  if(Array.isArray(input.media)){for(const [index,media] of input.media.slice(0,20).entries()){const key=typeof media==='string'?media:String((media as any)?.storageKey??'');if(key.trim())await query('INSERT INTO product_media(product_id,storage_key,sort_order) VALUES($1,$2,$3)',[result.rows[0].id,key.trim(),index]);}}
   return {id:result.rows[0].id,createdAt:result.rows[0].created_at.toISOString()};
 }
 
-export async function listSellerProducts(sellerId: string) {
-  const result = await query('SELECT id,shop_id,seller_id,title,description,price_minor,currency,inventory,status,media,created_at,updated_at FROM shop_products WHERE seller_id=$1 AND status<>\'archived\' ORDER BY created_at DESC',[sellerId]);
-  return result.rows;
-}
+export async function listSellerProducts(sellerId:string){const result=await query('SELECT p.id,p.shop_id,s.owner_id AS seller_id,p.title,p.description,p.price_minor,p.currency,p.inventory,p.status,p.created_at,p.updated_at FROM products p JOIN shops s ON s.id=p.shop_id WHERE s.owner_id=$1 AND p.status<>\'archived\' ORDER BY p.created_at DESC',[sellerId]);return result.rows;}
+export async function getProduct(productId:string){const result=await query('SELECT p.id,p.shop_id,s.owner_id AS seller_id,p.title,p.description,p.price_minor,p.currency,p.inventory,p.status,p.created_at,s.name AS shop_name FROM products p JOIN shops s ON s.id=p.shop_id WHERE p.id=$1 LIMIT 1',[productId]);return result.rows[0]??null;}
 
-export async function getProduct(productId: string) {
-  const result = await query('SELECT p.id,p.shop_id,p.seller_id,p.title,p.description,p.price_minor,p.currency,p.inventory,p.status,p.media,p.created_at,s.name AS shop_name,s.slug AS shop_slug FROM shop_products p JOIN shops s ON s.id=p.shop_id WHERE p.id=$1 LIMIT 1',[productId]);
-  return result.rows[0] ?? null;
-}
+export async function getCart(buyerId:string){const result=await query('SELECT c.id,COALESCE(json_agg(json_build_object(\'productId\',l.product_id,\'quantity\',l.quantity,\'unitPriceMinor\',l.unit_price_minor,\'title\',p.title,\'currency\',p.currency,\'inventory\',p.inventory)) FILTER(WHERE l.product_id IS NOT NULL),\'[]\'::json) AS items FROM carts c LEFT JOIN cart_lines l ON l.cart_id=c.id LEFT JOIN products p ON p.id=l.product_id WHERE c.buyer_id=$1 GROUP BY c.id',[buyerId]);return result.rows[0]??{id:null,items:[]};}
 
-export async function getCart(buyerId: string) {
-  const result = await query('SELECT c.id,c.currency,COALESCE(json_agg(json_build_object(\'productId\',i.product_id,\'quantity\',i.quantity,\'unitPriceMinor\',i.unit_price_minor,\'title\',p.title,\'inventory\',p.inventory)) FILTER (WHERE i.product_id IS NOT NULL),\'[]\'::json) AS items FROM carts c LEFT JOIN cart_items i ON i.cart_id=c.id LEFT JOIN shop_products p ON p.id=i.product_id WHERE c.buyer_id=$1 GROUP BY c.id',[buyerId]);
-  return result.rows[0] ?? {id:null,currency:'INR',items:[]};
-}
+export async function addCartItem(buyerId:string,productId:string,quantity:number){if(!Number.isSafeInteger(quantity)||quantity<1||quantity>100)throw new Error('Invalid quantity');await withTransaction(async client=>{const p=await client.query<{price_minor:string;currency:string;inventory:number;status:string}>('SELECT price_minor,currency,inventory,status FROM products WHERE id=$1 FOR UPDATE',[productId]);const product=p.rows[0];if(!product||product.status!=='active')throw new Error('Product not found or inactive');const cart=await client.query<{id:string}>('INSERT INTO carts(buyer_id) VALUES($1) ON CONFLICT(buyer_id) DO UPDATE SET updated_at=now() RETURNING id',[buyerId]);const current=await client.query<{quantity:number}>('SELECT quantity FROM cart_lines WHERE cart_id=$1 AND product_id=$2 FOR UPDATE',[cart.rows[0].id,productId]);const next=(current.rows[0]?.quantity??0)+quantity;if(next>product.inventory)throw new Error('Insufficient inventory');await client.query('INSERT INTO cart_lines(cart_id,product_id,quantity,unit_price_minor) VALUES($1,$2,$3,$4) ON CONFLICT(cart_id,product_id) DO UPDATE SET quantity=EXCLUDED.quantity,unit_price_minor=EXCLUDED.unit_price_minor',[cart.rows[0].id,productId,next,product.price_minor]);});return getCart(buyerId);}
 
-export async function addCartItem(buyerId: string, productId: string, quantity: number) {
-  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100) throw new Error('Invalid quantity');
-  await withTransaction(async client => {
-    const product = await client.query<{price_minor:string;currency:string;inventory:number;status:string}>('SELECT price_minor,currency,inventory,status FROM shop_products WHERE id=$1 FOR UPDATE',[productId]);
-    const p=product.rows[0];
-    if (!p || p.status!=='active') throw new Error('Product not found or inactive');
-    if (p.inventory < quantity) throw new Error('Insufficient inventory');
-    const cart = await client.query<{id:string;currency:string}>('INSERT INTO carts(buyer_id,currency) VALUES($1,$2) ON CONFLICT(buyer_id) DO UPDATE SET updated_at=now() RETURNING id,currency',[buyerId,p.currency]);
-    if (cart.rows[0].currency !== p.currency) throw new Error('Cart currency mismatch');
-    const existing = await client.query<{quantity:number}>('SELECT quantity FROM cart_items WHERE cart_id=$1 AND product_id=$2 FOR UPDATE',[cart.rows[0].id,productId]);
-    const nextQuantity = (existing.rows[0]?.quantity ?? 0) + quantity;
-    if (nextQuantity > p.inventory) throw new Error('Insufficient inventory');
-    await client.query('INSERT INTO cart_items(cart_id,product_id,quantity,unit_price_minor) VALUES($1,$2,$3,$4) ON CONFLICT(cart_id,product_id) DO UPDATE SET quantity=EXCLUDED.quantity,unit_price_minor=EXCLUDED.unit_price_minor',[cart.rows[0].id,productId,nextQuantity,p.price_minor]);
-  });
-  return getCart(buyerId);
-}
+export async function updateCartItem(buyerId:string,productId:string,quantity:number){if(!Number.isSafeInteger(quantity)||quantity<0||quantity>100)throw new Error('Invalid quantity');const cart=await query<{id:string}>('SELECT id FROM carts WHERE buyer_id=$1',[buyerId]);if(!cart.rows[0])return getCart(buyerId);if(quantity===0)await query('DELETE FROM cart_lines WHERE cart_id=$1 AND product_id=$2',[cart.rows[0].id,productId]);else{const p=await query<{inventory:number}>('SELECT inventory FROM products WHERE id=$1 AND status=\'active\'',[productId]);if(!p.rows[0]||quantity>p.rows[0].inventory)throw new Error('Insufficient inventory');await query('UPDATE cart_lines SET quantity=$1 WHERE cart_id=$2 AND product_id=$3',[quantity,cart.rows[0].id,productId]);}return getCart(buyerId);}
 
-export async function updateCartItem(buyerId: string, productId: string, quantity: number) {
-  if (!Number.isSafeInteger(quantity) || quantity < 0 || quantity > 100) throw new Error('Invalid quantity');
-  const cart = await query<{id:string}>('SELECT id FROM carts WHERE buyer_id=$1',[buyerId]);
-  if (!cart.rows[0]) return getCart(buyerId);
-  if (quantity===0) await query('DELETE FROM cart_items WHERE cart_id=$1 AND product_id=$2',[cart.rows[0].id,productId]);
-  else {
-    const inventory = await query<{inventory:number}>('SELECT inventory FROM shop_products WHERE id=$1 AND status=\'active\'',[productId]);
-    if (!inventory.rows[0] || quantity > inventory.rows[0].inventory) throw new Error('Insufficient inventory');
-    await query('UPDATE cart_items SET quantity=$1 WHERE cart_id=$2 AND product_id=$3',[quantity,cart.rows[0].id,productId]);
-  }
-  return getCart(buyerId);
-}
-
-export async function placeOrder(buyerId: string) {
-  return withTransaction(async client => {
-    const cart = await client.query<{id:string;currency:string}>('SELECT id,currency FROM carts WHERE buyer_id=$1 FOR UPDATE',[buyerId]);
-    if (!cart.rows[0]) throw new Error('Cart is empty');
-    const items = await client.query<{product_id:string;quantity:number;unit_price_minor:string;title:string;seller_id:string;inventory:number;status:string}>('SELECT i.product_id,i.quantity,p.price_minor AS unit_price_minor,p.title,p.seller_id,p.inventory,p.status FROM cart_items i JOIN shop_products p ON p.id=i.product_id WHERE i.cart_id=$1 FOR UPDATE',[cart.rows[0].id]);
-    if (!items.rows.length) throw new Error('Cart is empty');
-    let total=0;
-    for(const item of items.rows){ if(item.status!=='active'||item.inventory<item.quantity) throw new Error('Cart contains unavailable inventory'); total += Number(item.unit_price_minor)*item.quantity; }
-    if(!Number.isSafeInteger(total)) throw new Error('Order total overflow');
-    const order=await client.query<{id:string}>('INSERT INTO shop_orders(buyer_id,status,total_minor,currency) VALUES($1,\'pending_payment\',$2,$3) RETURNING id',[buyerId,total,cart.rows[0].currency]);
-    for(const item of items.rows){
-      await client.query('INSERT INTO shop_order_items(order_id,product_id,seller_id,title_snapshot,quantity,unit_price_minor,currency) VALUES($1,$2,$3,$4,$5,$6,$7)',[order.rows[0].id,item.product_id,item.seller_id,item.title,item.quantity,item.unit_price_minor,cart.rows[0].currency]);
-      await client.query('UPDATE shop_products SET inventory=inventory-$1,updated_at=now() WHERE id=$2',[item.quantity,item.product_id]);
-    }
-    await client.query('DELETE FROM cart_items WHERE cart_id=$1',[cart.rows[0].id]);
-    await client.query('UPDATE carts SET updated_at=now() WHERE id=$1',[cart.rows[0].id]);
-    return {orderId:order.rows[0].id,status:'pending_payment',totalMinor:total,currency:cart.rows[0].currency};
-  });
-}
+export async function placeOrder(buyerId:string){return withTransaction(async client=>{const cart=await client.query<{id:string}>('SELECT id FROM carts WHERE buyer_id=$1 FOR UPDATE',[buyerId]);if(!cart.rows[0])throw new Error('Cart is empty');const items=await client.query<{product_id:string;quantity:number;unit_price_minor:string;title:string;seller_id:string;currency:string;inventory:number;status:string}>('SELECT l.product_id,l.quantity,p.price_minor AS unit_price_minor,p.title,s.owner_id AS seller_id,p.currency,p.inventory,p.status FROM cart_lines l JOIN products p ON p.id=l.product_id JOIN shops s ON s.id=p.shop_id WHERE l.cart_id=$1 FOR UPDATE',[cart.rows[0].id]);if(!items.rows.length)throw new Error('Cart is empty');const groups=new Map<string,typeof items.rows>();for(const item of items.rows){if(item.status!=='active'||item.inventory<item.quantity)throw new Error('Cart contains unavailable inventory');const group=groups.get(item.seller_id)??[];group.push(item);groups.set(item.seller_id,group);}const orders=[];for(const [sellerId,group] of groups){let total=0;for(const item of group)total+=Number(item.unit_price_minor)*item.quantity;if(!Number.isSafeInteger(total))throw new Error('Order total overflow');const order=await client.query<{id:string}>('INSERT INTO orders(buyer_id,seller_id,total_minor,currency,status) VALUES($1,$2,$3,$4,\'pending_payment\') RETURNING id',[buyerId,sellerId,total,group[0].currency]);for(const item of group){await client.query('INSERT INTO order_lines(order_id,product_id,quantity,unit_price_minor) VALUES($1,$2,$3,$4)',[order.rows[0].id,item.product_id,item.quantity,item.unit_price_minor]);await client.query('UPDATE products SET inventory=inventory-$1,updated_at=now() WHERE id=$2',[item.quantity,item.product_id]);}orders.push({orderId:order.rows[0].id,totalMinor:total,currency:group[0].currency,status:'pending_payment'});}await client.query('DELETE FROM cart_lines WHERE cart_id=$1',[cart.rows[0].id]);await client.query('UPDATE carts SET updated_at=now() WHERE id=$1',[cart.rows[0].id]);return {orders};});}
