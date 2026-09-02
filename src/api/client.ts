@@ -43,3 +43,7 @@ export async function reportTarget(target:{type:string;id:string},reason:string,
 export type SellerProduct={id:string;shop_id:string;seller_id:string;title:string;description:string;price_minor:number;currency:string;inventory:number;status:string;created_at:string;updated_at:string;category?:string|null};
 export async function getSellerProducts(){return api<{products:SellerProduct[]}>('/v1/shop/products');}
 export async function createSellerProduct(input:{title:string;description?:string;priceMinor:number;currency?:string;inventory?:number;category?:string;shopName?:string}){return api<{id:string;createdAt:string}>('/v1/shop/products',{method:'POST',body:JSON.stringify(input)});}
+export type SessionInfo={id:string;deviceId:string;label:string;createdAt:string;lastSeenAt:string;expiresAt:string;revoked:boolean;current:boolean};
+export async function getSessions(){return api<{sessions:SessionInfo[]}>('/v1/auth/sessions');}
+export async function revokeSession(id:string){return api<{ok:boolean}>(`/v1/auth/sessions/${encodeURIComponent(id)}/revoke`,{method:'POST'});}
+export async function revokeAllSessions(){return api<{ok:boolean}>('/v1/auth/sessions/revoke-all',{method:'POST'});}
