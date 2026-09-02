@@ -2,14 +2,14 @@ import { ReactNode } from 'react';
 import { Link, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, radius } from './theme';
+import { colors, elevation, radius, spacing, type } from './theme';
 
 const items = [
-  { href: '/', icon: '⌂', label: 'Home' },
-  { href: '/reels', icon: '◉', label: 'Discover' },
-  { href: '/search', icon: '⌕', label: 'Search' },
-  { href: '/messages', icon: '◌', label: 'Messages' },
-  { href: '/profile', icon: '◎', label: 'You' },
+  { href: '/', glyph: '◌', label: 'Home' },
+  { href: '/search', glyph: '⌕', label: 'Explore' },
+  { href: '/reels', glyph: '✦', label: 'Create' },
+  { href: '/messages', glyph: '↗', label: 'Connect' },
+  { href: '/profile', glyph: '○', label: 'You' },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -17,14 +17,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.body}>{children}</View>
-      <View style={styles.nav}>
+      <View style={styles.nav} accessibilityRole="tablist">
         {items.map((item) => {
-          const active = pathname === item.href;
+          const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
           return (
             <Link key={item.href} href={item.href} asChild>
-              <Pressable accessibilityRole="button" accessibilityLabel={item.label} style={styles.navItem}>
+              <Pressable
+                accessibilityRole="tab"
+                accessibilityLabel={item.label}
+                accessibilityState={{ selected: active }}
+                style={({ pressed }) => [styles.navItem, pressed && styles.navPressed]}
+              >
                 <View style={[styles.iconWrap, active && styles.iconActive]}>
-                  <Text style={[styles.icon, active && styles.iconActiveText]}>{item.icon}</Text>
+                  <Text style={[styles.icon, active && styles.iconActiveText]}>{item.glyph}</Text>
                 </View>
                 <Text style={[styles.label, active && styles.labelActive]}>{item.label}</Text>
               </Pressable>
@@ -43,19 +48,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    minHeight: 70,
-    paddingHorizontal: 8,
-    paddingTop: 7,
-    paddingBottom: 6,
+    minHeight: 78,
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.line,
+    ...elevation.low,
   },
-  navItem: { flex: 1, alignItems: 'center', gap: 2 },
-  iconWrap: { minWidth: 42, minHeight: 34, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  iconActive: { backgroundColor: colors.accentSoft },
-  icon: { fontSize: 21, color: colors.muted },
-  iconActiveText: { color: colors.accent, fontWeight: '800' },
-  label: { fontSize: 10, color: colors.faint, fontWeight: '600' },
+  navItem: {
+    flex: 1,
+    minHeight: 62,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    borderRadius: radius.lg,
+  },
+  navPressed: { opacity: 0.72 },
+  iconWrap: {
+    width: 46,
+    height: 34,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconActive: { backgroundColor: colors.brandSoft },
+  icon: { fontSize: 22, lineHeight: 24, color: colors.muted, fontWeight: '600' },
+  iconActiveText: { color: colors.brand, fontWeight: '800' },
+  label: { fontSize: type.labelSM, color: colors.faint, fontWeight: '650' },
   labelActive: { color: colors.ink, fontWeight: '800' },
 });
