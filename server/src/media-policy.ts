@@ -1,0 +1,3 @@
+export const MEDIA_LIMITS={image:20*1024*1024,video:500*1024*1024} as const;export const MEDIA_MIME={image:new Set(['image/jpeg','image/png','image/webp']),video:new Set(['video/mp4','video/webm'])} as const;export type MediaType=keyof typeof MEDIA_LIMITS;
+export function validateMediaDeclaration(type:string,mime:string,size:number):asserts type is MediaType{if(type!=='image'&&type!=='video')throw new Error('Invalid media type');if(!MEDIA_MIME[type].has(mime))throw new Error('Unsupported media type');if(!Number.isSafeInteger(size)||size<=0||size>MEDIA_LIMITS[type])throw new Error('Invalid media size');}
+export function sanitizeUploadFilename(value:string){return value.replace(/[\u0000-\u001f\\/:*?"<>|]+/g,'_').trim().slice(0,180)||'upload';}
