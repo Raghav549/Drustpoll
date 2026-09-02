@@ -1,4 +1,5 @@
 import { query, withTransaction } from './db.js';
+import { decodeFeedCursor, encodeFeedCursor } from './feed-cursor.js';
 
 export type FeedMode = 'for_you' | 'following';
 
@@ -47,7 +48,7 @@ export async function setFollowState(actorId: string, targetId: string, state: '
 }
 
 export async function getFeed(userId: string, mode: FeedMode, limit = 30, before?: string) {
-  const size = Math.min(Math.max(limit,1),50);
+  const size = Math.min(Math.max(Math.trunc(limit),1),50);
   const params: unknown[] = [userId,size + 1];
   let filter = `p.deleted_at IS NULL
     AND (p.visibility='public' OR p.author_id=$1 OR EXISTS (
@@ -58,7 +59,11 @@ export async function getFeed(userId: string, mode: FeedMode, limit = 30, before
   if (mode === 'following') {
     filter += ` AND (p.author_id=$1 OR EXISTS (SELECT 1 FROM follows f WHERE f.follower_id=$1 AND f.followed_id=p.author_id AND f.state='following'))`;
   }
-  if (before) { params.push(before); filter += ` AND p.created_at < $${params.length}`; }
+  if (before) {
+    const cursor = decodeFeedCursor(before);
+    params.push(cursor.createdAt,cursor.postId);
+    filter += ` AND (p.created_at < $${params.length-1}::timestamptz OR (p.created_at = $${params.length-1}::timestamptz AND p.id < $${params.length}::uuid))`;
+  }
 
   const result = await query(`
     SELECT p.id,p.author_id,p.caption,p.visibility,p.created_at,
@@ -76,10 +81,11 @@ export async function getFeed(userId: string, mode: FeedMode, limit = 30, before
     LEFT JOIN post_media m ON m.post_id=p.id
     WHERE ${filter}
     GROUP BY p.id,u.id,pf.avatar_url
-    ORDER BY p.created_at DESC
+    ORDER BY p.created_at DESC,p.id DESC
     LIMIT $2`, params);
   const rows = result.rows.slice(0,size);
-  return { items: rows, nextCursor: result.rows.length > size ? rows[rows.length - 1]?.created_at ?? null : null };
+  const last = rows[rows.length - 1];
+  return { items: rows, nextCursor: result.rows.length > size && last ? encodeFeedCursor({createdAt:new Date(last.created_at).toISOString(),postId:String(last.id)}) : null };
 }
 
 export async function createPost(authorId: string, input: { caption?: string; visibility?: 'public'|'followers'|'private'; mediaAssetIds?: string[] }) {
@@ -126,7 +132,7 @@ export async function toggleSave(userId: string, postId: string) {
   if(!await canInteract(userId,post.rows[0].author_id))throw new Error('Interaction blocked');
   const current = await query('SELECT 1 FROM post_saves WHERE user_id=$1 AND post_id=$2',[userId,postId]);
   if (current.rowCount) { await query('DELETE FROM post_saves WHERE user_id=$1 AND post_id=$2',[userId,postId]); return {saved:false}; }
-  await query('INSERT INTO post_saves(post_id,user_id) VALUES($1,$2)',[postId,userId]);
+  await query('INSERT INTO post_saves(post_id,user_id) VALUES($1,$2)',[userId,postId]);
   return {saved:true};
 }
 
