@@ -1,11 +1,10 @@
 import { query, withTransaction } from './db.js';
 
 type FeatureJob={id:string;post_id:string;version:number;attempt_count:number};
-
 const MAX_ATTEMPTS=5;
 const LEASE_MS=5*60*1000;
 
-/** Provider-neutral extraction boundary. Real extractors are injected by deployment; this layer never invents model output. */
+/** Provider-neutral extraction boundary. Deployment supplies real model/media adapters; no fabricated features. */
 export type MultimodalExtractor={
  extractText(input:{caption:string}):Promise<Record<string,unknown>>;
  extractImage(input:{storageKeys:string[]}):Promise<Record<string,unknown>>;
@@ -14,7 +13,7 @@ export type MultimodalExtractor={
  fuse(input:{text:Record<string,unknown>;image:Record<string,unknown>;audio:Record<string,unknown>;video:Record<string,unknown>}):Promise<Record<string,unknown>>;
 };
 
-export async function leaseFeatureJob(workerId:string):Promise<FeatureJob|null>{
+export async function leaseFeatureJob(_workerId:string):Promise<FeatureJob|null>{
  return withTransaction(async client=>{
   const r=await client.query<FeatureJob>(`SELECT id,post_id,version,attempt_count FROM recommendation_feature_jobs WHERE (status='queued' AND available_at<=now()) OR (status='leased' AND lease_until<now()) ORDER BY available_at,id FOR UPDATE SKIP LOCKED LIMIT 1`);
   if(!r.rowCount)return null;
@@ -30,10 +29,9 @@ export async function runFeatureJob(job:FeatureJob,extractor:MultimodalExtractor
   const post=await query<{caption:string}>(`SELECT caption FROM posts WHERE id=$1`,[job.post_id]);
   if(!post.rowCount)throw new Error('POST_NOT_FOUND');
   const media=await query<{media_type:string;storage_key:string}>(`SELECT media_type,storage_key FROM post_media WHERE post_id=$1 ORDER BY sort_order`,[job.post_id]);
-  const keys=media.rows.map(x=>x.storage_key);
   const image=await extractor.extractImage({storageKeys:media.rows.filter(x=>x.media_type==='image').map(x=>x.storage_key)});
   const video=await extractor.extractVideo({storageKeys:media.rows.filter(x=>x.media_type==='video').map(x=>x.storage_key)});
-  const audio=await extractor.extractAudio({storageKeys:keys});
+  const audio=await extractor.extractAudio({storageKeys:media.rows.map(x=>x.storage_key)});
   const text=await extractor.extractText({caption:post.rows[0].caption});
   const fused=await extractor.fuse({text,image,audio,video});
   await withTransaction(async client=>{
@@ -43,7 +41,7 @@ export async function runFeatureJob(job:FeatureJob,extractor:MultimodalExtractor
  }catch(error){
   const code=error instanceof Error?error.message:'FEATURE_EXTRACTION_FAILED';
   await query(`UPDATE recommendation_feature_jobs SET status=CASE WHEN attempt_count >= $2 THEN 'failed' ELSE 'queued' END,available_at=now()+make_interval(secs=>LEAST(3600,POWER(2,attempt_count)*5)::int),lease_until=NULL,error_code=$3,updated_at=now() WHERE id=$1`,[job.id,MAX_ATTEMPTS,code.slice(0,120)]);
-  await query(`UPDATE content_features SET status=CASE WHEN EXISTS(SELECT 1 FROM recommendation_feature_jobs WHERE id=$1 AND status='failed') THEN 'failed' ELSE 'queued' END',error_code=$2,updated_at=now() WHERE post_id=(SELECT post_id FROM recommendation_feature_jobs WHERE id=$1)`,[job.id,code.slice(0,120)]).catch(()=>undefined);
+  await query(`UPDATE content_features SET status=CASE WHEN EXISTS(SELECT 1 FROM recommendation_feature_jobs WHERE id=$1 AND status='failed') THEN 'failed' ELSE 'queued' END,error_code=$2,updated_at=now() WHERE post_id=(SELECT post_id FROM recommendation_feature_jobs WHERE id=$1)`,[job.id,code.slice(0,120)]).catch(()=>undefined);
   throw error;
  }
 }
