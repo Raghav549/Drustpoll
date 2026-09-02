@@ -5,6 +5,7 @@ import { health } from './health.js';
 import { addComment, createPost, follow, getFeed, getProfile, setFollowState, toggleReaction, toggleSave, unfollow } from './social-service.js';
 import { recordFeedEvents } from './feed-events-service.js';
 import { addCartItem, createProduct, getCart, getProduct, listSellerProducts, placeOrder, updateCartItem } from './commerce-service.js';
+import { listNotifications, markAllNotificationsRead, markNotificationRead, unreadNotificationCount } from './notification-service.js';
 
 const json = (res: ServerResponse, status: number, body: unknown) => {
   res.statusCode = status;
@@ -45,6 +46,11 @@ const server=createServer(async(req,res)=>{
     if(req.method==='POST'&&url.pathname==='/v1/auth/reauthenticate'){const input=await body(req);return json(res,200,await createReauthGrant(session.userId,session.sessionId,String(input.password??'')));}
     if(req.method==='POST'&&url.pathname==='/v1/auth/password/change'){const input=await body(req);await changePassword(session.userId,String(input.currentPassword??''),String(input.newPassword??''));clearSessionCookie(res);return json(res,200,{ok:true,sessionsRevoked:true});}
 
+    if(req.method==='GET'&&url.pathname==='/v1/notifications'){const limit=Number(url.searchParams.get('limit')??30);const before=url.searchParams.get('before')??undefined;return json(res,200,await listNotifications(session.userId,limit,before));}
+    if(req.method==='GET'&&url.pathname==='/v1/notifications/unread-count')return json(res,200,await unreadNotificationCount(session.userId));
+    const notificationMatch=url.pathname.match(/^\/v1\/notifications\/([^/]+)\/read$/);if(req.method==='POST'&&notificationMatch)return json(res,200,await markNotificationRead(session.userId,notificationMatch[1]));
+    if(req.method==='POST'&&url.pathname==='/v1/notifications/read-all')return json(res,200,await markAllNotificationsRead(session.userId));
+
     if(req.method==='GET'&&url.pathname==='/v1/social/me/profile')return json(res,200,{profile:await getProfile(session.userId)});
     const profileMatch=url.pathname.match(/^\/v1\/social\/profiles\/([^/]+)$/);if(req.method==='GET'&&profileMatch)return json(res,200,{profile:await getProfile(profileMatch[1])});
     if(req.method==='POST'&&url.pathname==='/v1/social/follow'){const input=await body(req);return json(res,200,await follow(session.userId,String(input.targetUserId??'')));}
@@ -63,7 +69,7 @@ const server=createServer(async(req,res)=>{
     if(req.method==='GET'&&url.pathname==='/v1/cart')return json(res,200,await getCart(session.userId));
     if(req.method==='POST'&&url.pathname==='/v1/cart/items'){const input=await body(req);return json(res,200,await addCartItem(session.userId,String(input.productId??''),Number(input.quantity??1)));}
     if(req.method==='PATCH'&&url.pathname==='/v1/cart/items'){const input=await body(req);return json(res,200,await updateCartItem(session.userId,String(input.productId??''),Number(input.quantity??0)));}
-    if(req.method==='POST'&&url.pathname==='/v1/orders'){return json(res,201,await placeOrder(session.userId));}
+    if(req.method==='POST'&&url.pathname==='/v1/orders')return json(res,201,await placeOrder(session.userId));
 
     return json(res,404,{error:'Not found'});
   }catch(error){const message=error instanceof Error?error.message:'Request failed';const status=/Unauthenticated/i.test(message)?401:/too many/i.test(message)?429:/already in use|invalid|incorrect|expired|required|not found|Cannot|insufficient|inactive/i.test(message)?400:500;return json(res,status,{error:status===500?'Internal server error':message});}
