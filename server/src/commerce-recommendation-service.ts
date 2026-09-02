@@ -1,29 +1,5 @@
 import { query } from './db.js';
-
 type ProductCandidate={id:string;shop_id:string;title:string;description:string;price_minor:number;currency:string;inventory:number;status:string;score:number;reason:string};
 const clamp=(n:number)=>Math.max(0,Math.min(1,n));
-
-/** Commerce ranking is intentionally inventory-aware and diversity-aware; urgency/scarcity copy is never used as a ranking signal. */
-export async function getRecommendedProducts(userId:string,limit=20){
-  const size=Math.min(Math.max(Math.trunc(limit),1),50);
-  const r=await query<ProductCandidate>(`WITH interacted AS(
-    SELECT DISTINCT p.id FROM products p JOIN cart_lines cl ON cl.product_id=p.id JOIN carts ca ON ca.id=cl.cart_id WHERE ca.user_id=$1
-    UNION SELECT DISTINCT ol.product_id FROM order_lines ol JOIN orders o ON o.id=ol.order_id WHERE o.buyer_id=$1
-  ),
-  blocked AS(SELECT blocked_id user_id FROM user_blocks WHERE blocker_id=$1 UNION SELECT blocker_id FROM user_blocks WHERE blocked_id=$1),
-  recent AS(SELECT DISTINCT p.id FROM products p JOIN product_media pm ON pm.product_id=p.id WHERE p.status='active'),
-  raw AS(SELECT p.id,p.shop_id,p.title,p.description,p.price_minor,p.currency,p.inventory,p.status,
-    CASE WHEN p.id IN(SELECT id FROM interacted) THEN .90 ELSE .35 END relevance,
-    CASE WHEN p.id IN(SELECT id FROM recent) THEN .55 ELSE .20 END freshness,
-    CASE WHEN p.inventory>0 THEN 1.0 ELSE 0.0 END availability,
-    CASE WHEN s.owner_id IN(SELECT followed_id FROM follows WHERE follower_id=$1 AND state='following') THEN .85 ELSE .35 END relationship,
-    CASE WHEN p.inventory>0 THEN .20 ELSE 0 END diversity,
-    CASE WHEN p.shop_id IN(SELECT shop_id FROM products p2 JOIN interacted i ON i.id=p2.id) THEN 'similar_to_your_activity' ELSE 'discover_from_active_shop' END reason
-  FROM products p JOIN shops s ON s.id=p.shop_id
-  WHERE p.status='active' AND p.inventory>0 AND NOT EXISTS(SELECT 1 FROM blocked b WHERE b.user_id=s.owner_id)
-  ORDER BY p.id LIMIT 500)
-  SELECT *,(.35*relevance+.20*relationship+.15*freshness+.20*availability+.10*diversity) score FROM raw ORDER BY score DESC LIMIT $2`,[userId,size*4]);
-  const selected:ProductCandidate[]=[];const shops=new Set<string>();
-  for(const c of r.rows){if(selected.length>=size)break;const penalty=shops.has(c.shop_id)?.18:0;if(c.score-penalty<=0&&selected.length)continue;selected.push({...c,score:clamp(Number(c.score)-penalty)});shops.add(c.shop_id);}
-  return selected.map((x,position)=>({...x,position}));
-}
+export async function recordCommerceEvent(userId:string,input:{productId:string;eventType:'impression'|'open'|'view'|'add_cart'|'remove_cart'|'purchase'|'save'|'not_interested';dwellMs?:number;clientEventId?:string}){if(!input.productId||!input.eventType)throw new Error('Invalid commerce event');const dwell=input.dwellMs==null?null:Number(input.dwellMs);if(dwell!==null&&(!Number.isSafeInteger(dwell)||dwell<0||dwell>86400000))throw new Error('Invalid dwell');const r=await query(`INSERT INTO commerce_events(user_id,product_id,event_type,dwell_ms,client_event_id) VALUES($1,$2,$3,$4,$5) ON CONFLICT(user_id,client_event_id) DO NOTHING RETURNING id`,[userId,input.productId,input.eventType,dwell,input.clientEventId??null]);return{accepted:Boolean(r.rowCount)};}
+export async function getRecommendedProducts(userId:string,limit=20){const size=Math.min(Math.max(Math.trunc(limit),1),50);const r=await query<ProductCandidate>(`WITH behavior AS(SELECT product_id,SUM(CASE event_type WHEN 'purchase' THEN 1.0 WHEN 'add_cart' THEN .8 WHEN 'save' THEN .7 WHEN 'view' THEN .45 WHEN 'open' THEN .25 WHEN 'not_interested' THEN -1.0 ELSE .05 END) signal FROM commerce_events WHERE user_id=$1 AND created_at>now()-interval '90 days' GROUP BY product_id),interacted AS(SELECT product_id FROM behavior WHERE signal>0),blocked AS(SELECT blocked_id user_id FROM user_blocks WHERE blocker_id=$1 UNION SELECT blocker_id FROM user_blocks WHERE blocked_id=$1),followed AS(SELECT followed_id FROM follows WHERE follower_id=$1 AND state='following'),shop_affinity AS(SELECT p.shop_id,MAX(b.signal) signal FROM products p JOIN behavior b ON b.product_id=p.id GROUP BY p.shop_id),raw AS(SELECT p.id,p.shop_id,p.title,p.description,p.price_minor,p.currency,p.inventory,p.status,clamp(0) score,CASE WHEN b.signal>0 THEN LEAST(1,b.signal/3.0) ELSE .18 END behavior_relevance,CASE WHEN s.owner_id IN(SELECT followed_id FROM followed) THEN .85 ELSE .30 END relationship,CASE WHEN p.inventory>0 THEN 1.0 ELSE 0 END availability,CASE WHEN sa.signal IS NULL THEN .8 ELSE LEAST(1,sa.signal/3.0) END shop_affinity,CASE WHEN b.product_id IS NULL THEN .65 ELSE .25 END novelty,CASE WHEN b.signal<0 THEN 1.0 ELSE 0 END negative_risk FROM products p JOIN shops s ON s.id=p.shop_id LEFT JOIN behavior b ON b.product_id=p.id LEFT JOIN shop_affinity sa ON sa.shop_id=p.shop_id WHERE p.status='active' AND p.inventory>0 AND NOT EXISTS(SELECT 1 FROM blocked x WHERE x.user_id=s.owner_id)),scored AS(SELECT *,clamp(.34*behavior_relevance+.16*relationship+.18*availability+.12*shop_affinity+.12*novelty-.25*negative_risk) score FROM raw) SELECT * FROM scored ORDER BY score DESC LIMIT $2`,[userId,size*5]);const selected:ProductCandidate[]=[];const shops=new Set<string>();for(const c of r.rows){if(selected.length>=size)break;const penalty=shops.has(c.shop_id)?.16:0;const score=clamp(Number(c.score)-penalty);if(score<=0&&selected.length)continue;selected.push({...c,score,reason:Number(c.behavior_relevance)>.6?'similar_to_activity':shops.has(c.shop_id)?'diverse_shop':'new_shop'});shops.add(c.shop_id);}return selected.map((x,position)=>({...x,position}));}
