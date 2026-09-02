@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pool } from './db.js';
 
-const files = ['001_auth.sql','002_social_commerce.sql','003_platform_foundation.sql','004_discovery_search.sql','005_payment_core.sql','006_safety_controls.sql'];
+const files = ['001_auth.sql','002_social_commerce.sql','003_platform_foundation.sql','004_discovery_search.sql','005_payment_core.sql','006_safety_controls.sql','007_media_pipeline.sql'];
 
 async function main(){
   const client=await pool.connect();
