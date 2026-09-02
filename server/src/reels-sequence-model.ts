@@ -6,11 +6,7 @@ export type SequenceCandidate={postId:string;creatorId:string;topic?:string;form
 const clamp=(v:number)=>Math.max(0,Math.min(1,Number.isFinite(v)?v:0));
 const decay=(ageMs:number,halfLifeMs:number)=>Math.pow(0.5,Math.max(0,ageMs)/halfLifeMs);
 
-/**
- * Evidence-aligned starting model: duration-normalized watch behaviour plus
- * recency-weighted creator/topic/format affinity. It is a feature contract,
- * not a claim of trained production weights; validation belongs to experiments.
- */
+/** Duration-normalized watch behaviour plus recency-weighted sequence affinity. */
 export function buildSequenceProfile(events:SequenceEvent[],now=Date.now()){
   const creator=new Map<string,number>();const topic=new Map<string,number>();const format=new Map<string,number>();
   for(const e of events.slice(-200)){
@@ -26,13 +22,15 @@ export function buildSequenceProfile(events:SequenceEvent[],now=Date.now()){
   return {creator:normalize(creator),topic:normalize(topic),format:normalize(format)};
 }
 
-export function scoreSequenceCandidate(candidate:SequenceCandidate,profile:ReturnType<typeof buildSequenceProfile>,now=Date.now()){
-  const affinity=clamp((profile.creator.get(candidate.creatorId)??0)*0.40+(candidate.topic?(profile.topic.get(candidate.topic)??0):0)*0.30+(candidate.format?(profile.format.get(candidate.format)??0):0)*0.10);
+export function scoreSequenceCandidate(candidate:SequenceCandidate,profile:ReturnType<typeof buildSequenceProfile>){
+  const creatorAffinity=profile.creator.get(candidate.creatorId)??0;
+  const topicAffinity=candidate.topic?(profile.topic.get(candidate.topic)??0):0;
+  const formatAffinity=candidate.format?(profile.format.get(candidate.format)??0):0;
+  const affinity=clamp(creatorAffinity*.40+topicAffinity*.30+formatAffinity*.10);
   const similarity=clamp(candidate.semanticSimilarity??0);
   const freshness=clamp(candidate.freshness??0);
   const quality=clamp(candidate.quality??0);
   const longTail=clamp(candidate.longTail??0);
   const exposureBalance=1-clamp(candidate.creatorExposure??0);
-  const temporal=decay(Math.max(0,now-Date.now()),6*60*60*1000);
-  return clamp(affinity*.34+similarity*.20+freshness*.12+quality*.12+longTail*.10+exposureBalance*.08)*temporal;
+  return clamp(affinity*.34+similarity*.20+freshness*.12+quality*.12+longTail*.10+exposureBalance*.08);
 }
