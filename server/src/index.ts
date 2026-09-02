@@ -19,7 +19,6 @@ import { getPrivacySettings, updatePrivacySettings } from './privacy-service.js'
 import { allowRequest, securityHeaders } from './security-middleware.js';
 import { getBuyerOrder, listBuyerOrders, cancelPendingOrder } from './order-service.js';
 import { recordUiMeasurements } from './measurement-service.js';
-
 const json=(res:ServerResponse,status:number,body:unknown)=>{securityHeaders(res);res.statusCode=status;res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(JSON.stringify(body));};
 async function body(req:IncomingMessage):Promise<any>{let data='';for await(const chunk of req){data+=chunk;if(Buffer.byteLength(data)>256*1024)throw new Error('Request too large');}return data?JSON.parse(data):{};}
 function bearer(req:IncomingMessage){const v=req.headers.authorization;return v?.startsWith('Bearer ')?v.slice(7):null;}
@@ -43,6 +42,8 @@ const server=createServer(async(req,res)=>{try{
  const session=await auth(req);if(!session)return json(res,401,{error:'Unauthenticated'});
  if(req.method==='GET'&&url.pathname==='/v1/auth/me')return json(res,200,{session});
  if(req.method==='GET'&&url.pathname==='/v1/auth/sessions')return json(res,200,{sessions:await listSessions(session.userId,session.sessionId)});
+ const sr=url.pathname.match(/^\/v1\/auth\/sessions\/([^/]+)\/revoke$/);if(req.method==='POST'&&sr){await revokeSession(session.userId,sr[1]);return json(res,200,{ok:true});}
+ if(req.method==='POST'&&url.pathname==='/v1/auth/sessions/revoke-all'){await revokeAll(session.userId);return json(res,200,{ok:true});}
  if(req.method==='GET'&&url.pathname==='/v1/privacy')return json(res,200,{privacy:await getPrivacySettings(session.userId)});
  if(req.method==='PUT'&&url.pathname==='/v1/privacy')return json(res,200,{privacy:await updatePrivacySettings(session.userId,await body(req))});
  if(req.method==='GET'&&url.pathname==='/v1/notifications')return json(res,200,await listNotifications(session.userId,Number(url.searchParams.get('limit')??30),url.searchParams.get('before')??undefined));
