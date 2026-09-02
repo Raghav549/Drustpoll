@@ -1,19 +1,8 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppShell } from '../src/ui/AppShell';
 import { colors, radius, spacing } from '../src/ui/theme';
+import { getReels } from '../src/api/client';
 
-const cards = ['People making things','Ideas worth sharing','Your next rabbit hole'];
-
-export default function Reels() {
-  return (
-    <AppShell>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.kicker}>DISCOVER</Text>
-        <Text style={styles.title}>A wider feed.</Text>
-        <Text style={styles.subtitle}>Short video is one surface—not the whole product. Discovery should stay varied and explainable.</Text>
-        {cards.map((item,i)=><View key={item} style={styles.card}><Text style={styles.number}>0{i+1}</Text><View style={styles.copy}><Text style={styles.cardTitle}>{item}</Text><Text style={styles.cardBody}>Ranking will combine relevance with novelty, diversity, quality and safety.</Text></View></View>)}
-      </ScrollView>
-    </AppShell>
-  );
-}
-const styles=StyleSheet.create({content:{padding:spacing.xl,gap:spacing.lg},kicker:{fontSize:11,fontWeight:'800',letterSpacing:1.8,color:colors.muted},title:{fontSize:34,fontWeight:'800',color:colors.ink},subtitle:{fontSize:15,lineHeight:22,color:colors.muted},card:{minHeight:170,borderRadius:radius.xl,backgroundColor:colors.dark,padding:spacing.xl,flexDirection:'row',alignItems:'flex-end',gap:16},number:{fontSize:12,fontWeight:'800',color:colors.faint},copy:{flex:1},cardTitle:{fontSize:22,fontWeight:'800',color:'#fff'},cardBody:{fontSize:13,lineHeight:19,color:'#D0D5DD',marginTop:6,maxWidth:280}});
+export default function Reels(){const [items,setItems]=useState<Awaited<ReturnType<typeof getReels>>['items']>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState<string|null>(null);const load=useCallback(async()=>{setLoading(true);setError(null);try{setItems((await getReels()).items??[]);}catch(e){setError(e instanceof Error?e.message:'Could not load Reels');}finally{setLoading(false);}},[]);useEffect(()=>{void load();},[load]);return <AppShell><ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={()=>void load()}/>} contentContainerStyle={styles.content}><Text style={styles.kicker}>REELS</Text><Text style={styles.title}>Short video, without the tunnel vision.</Text><Text style={styles.subtitle}>Watch behaviour informs ranking, while creator exposure and variety keep the slate from collapsing into one narrow loop.</Text>{loading&&!items.length?<Text style={styles.state}>Loading recommendations…</Text>:error?<Text style={styles.state}>{error}</Text>:!items.length?<Text style={styles.state}>No Reels available yet.</Text>:items.map((x,i)=><View key={x.id} style={styles.card}><Text style={styles.number}>{String(i+1).padStart(2,'0')}</Text><View style={styles.copy}><Text style={styles.cardTitle}>Video {i+1}</Text><Text style={styles.cardBody}>{x.likes} likes · {x.comments} comments · {x.creator_exposures} recent creator exposures</Text><Text style={styles.cardMeta}>{x.prior_duration_ms?`${Math.round((x.prior_watched_ms/x.prior_duration_ms)*100)}% prior completion`: 'New to you'}</Text></View></View>)}</ScrollView></AppShell>}
+const styles=StyleSheet.create({content:{padding:spacing.xl,gap:spacing.lg},kicker:{fontSize:11,fontWeight:'800',letterSpacing:1.8,color:colors.muted},title:{fontSize:31,lineHeight:36,fontWeight:'800',color:colors.ink},subtitle:{fontSize:15,lineHeight:22,color:colors.muted},state:{padding:spacing.lg,color:colors.muted},card:{minHeight:145,borderRadius:radius.xl,backgroundColor:colors.dark,padding:spacing.xl,flexDirection:'row',alignItems:'center',gap:16},number:{fontSize:12,fontWeight:'800',color:colors.faint},copy:{flex:1},cardTitle:{fontSize:22,fontWeight:'800',color:'#fff'},cardBody:{fontSize:13,lineHeight:19,color:'#D0D5DD',marginTop:6},cardMeta:{fontSize:12,color:'#98A2B3',marginTop:8}});
