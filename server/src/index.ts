@@ -6,6 +6,7 @@ import { addComment, createPost, follow, getFeed, getProfile, setFollowState, to
 import { recordFeedEvents } from './feed-events-service.js';
 import { addCartItem, createProduct, getCart, getProduct, listSellerProducts, placeOrder, updateCartItem } from './commerce-service.js';
 import { listNotifications, markAllNotificationsRead, markNotificationRead, unreadNotificationCount } from './notification-service.js';
+import { searchDiscovery, type DiscoveryKind } from './discovery-service.js';
 
 const json = (res: ServerResponse, status: number, body: unknown) => {
   res.statusCode = status;
@@ -50,6 +51,8 @@ const server=createServer(async(req,res)=>{
     if(req.method==='GET'&&url.pathname==='/v1/notifications/unread-count')return json(res,200,await unreadNotificationCount(session.userId));
     const notificationMatch=url.pathname.match(/^\/v1\/notifications\/([^/]+)\/read$/);if(req.method==='POST'&&notificationMatch)return json(res,200,await markNotificationRead(session.userId,notificationMatch[1]));
     if(req.method==='POST'&&url.pathname==='/v1/notifications/read-all')return json(res,200,await markAllNotificationsRead(session.userId));
+
+    if(req.method==='GET'&&url.pathname==='/v1/discovery/search'){const q=url.searchParams.get('q')??'';const kind=(url.searchParams.get('kind')??'all') as DiscoveryKind;if(!['all','people','posts','products'].includes(kind))return json(res,400,{error:'Invalid search kind'});const limit=Number(url.searchParams.get('limit')??20);return json(res,200,await searchDiscovery(session.userId,q,kind,limit));}
 
     if(req.method==='GET'&&url.pathname==='/v1/social/me/profile')return json(res,200,{profile:await getProfile(session.userId)});
     const profileMatch=url.pathname.match(/^\/v1\/social\/profiles\/([^/]+)$/);if(req.method==='GET'&&profileMatch)return json(res,200,{profile:await getProfile(profileMatch[1])});
