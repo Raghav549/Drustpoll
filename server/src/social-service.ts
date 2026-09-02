@@ -48,7 +48,7 @@ export async function setFollowState(actorId: string, targetId: string, state: '
 }
 
 export async function getFeed(userId: string, mode: FeedMode, limit = 30, before?: string) {
-  const size = Math.min(Math.max(Math.trunc(limit),1),50);
+  const size = Math.min(Math.max(Number.isFinite(limit)?Math.trunc(limit):30,1),50);
   const params: unknown[] = [userId,size + 1];
   let filter = `p.deleted_at IS NULL
     AND (p.visibility='public' OR p.author_id=$1 OR EXISTS (
@@ -61,8 +61,10 @@ export async function getFeed(userId: string, mode: FeedMode, limit = 30, before
   }
   if (before) {
     const cursor = decodeFeedCursor(before);
-    params.push(cursor.createdAt,cursor.postId);
-    filter += ` AND (p.created_at < $${params.length-1}::timestamptz OR (p.created_at = $${params.length-1}::timestamptz AND p.id < $${params.length}::uuid))`;
+    params.push(cursor.createdAt,cursor.id);
+    const t=params.length-1;
+    const i=params.length;
+    filter += ` AND (p.created_at < $${t}::timestamptz OR (p.created_at = $${t}::timestamptz AND p.id < $${i}::uuid))`;
   }
 
   const result = await query(`
@@ -70,6 +72,7 @@ export async function getFeed(userId: string, mode: FeedMode, limit = 30, before
       COALESCE((SELECT count(*)::int FROM post_reactions r WHERE r.post_id=p.id),0) AS like_count,
       COALESCE((SELECT count(*)::int FROM comments c WHERE c.post_id=p.id AND c.deleted_at IS NULL),0) AS comment_count,
       COALESCE((SELECT count(*)::int FROM post_saves s WHERE s.post_id=p.id),0) AS save_count,
+      COALESCE((SELECT count(*)::int FROM feed_events e WHERE e.post_id=p.id AND e.event_type='share'),0) AS share_count,
       EXISTS (SELECT 1 FROM post_reactions me WHERE me.post_id=p.id AND me.user_id=$1) AS liked_by_me,
       EXISTS (SELECT 1 FROM post_saves me WHERE me.post_id=p.id AND me.user_id=$1) AS saved_by_me,
       u.username,u.display_name,pf.avatar_url,
@@ -85,7 +88,7 @@ export async function getFeed(userId: string, mode: FeedMode, limit = 30, before
     LIMIT $2`, params);
   const rows = result.rows.slice(0,size);
   const last = rows[rows.length - 1];
-  return { items: rows, nextCursor: result.rows.length > size && last ? encodeFeedCursor({createdAt:new Date(last.created_at).toISOString(),postId:String(last.id)}) : null };
+  return { items: rows, nextCursor: result.rows.length > size && last ? encodeFeedCursor({createdAt:new Date(last.created_at).toISOString(),id:String(last.id)}) : null };
 }
 
 export async function createPost(authorId: string, input: { caption?: string; visibility?: 'public'|'followers'|'private'; mediaAssetIds?: string[] }) {
@@ -93,6 +96,7 @@ export async function createPost(authorId: string, input: { caption?: string; vi
   if (caption.length > 2200) throw new Error('Caption is too long');
   const visibility = input.visibility ?? 'public';
   const assetIds = Array.from(new Set(input.mediaAssetIds ?? [])).map(String).filter(Boolean);
+  if (!['public','followers','private'].includes(visibility)) throw new Error('Invalid visibility');
   if (assetIds.length > 10) throw new Error('Too many media assets');
 
   return withTransaction(async client => {
@@ -132,7 +136,7 @@ export async function toggleSave(userId: string, postId: string) {
   if(!await canInteract(userId,post.rows[0].author_id))throw new Error('Interaction blocked');
   const current = await query('SELECT 1 FROM post_saves WHERE user_id=$1 AND post_id=$2',[userId,postId]);
   if (current.rowCount) { await query('DELETE FROM post_saves WHERE user_id=$1 AND post_id=$2',[userId,postId]); return {saved:false}; }
-  await query('INSERT INTO post_saves(post_id,user_id) VALUES($1,$2)',[userId,postId]);
+  await query('INSERT INTO post_saves(post_id,user_id) VALUES($1,$2)',[postId,userId]);
   return {saved:true};
 }
 
@@ -142,6 +146,7 @@ export async function addComment(userId: string, postId: string, body: string, p
   const post=await query<{author_id:string}>('SELECT author_id FROM posts WHERE id=$1 AND deleted_at IS NULL',[postId]);
   if(!post.rowCount)throw new Error('Post not found');
   if(!await canInteract(userId,post.rows[0].author_id))throw new Error('Interaction blocked');
+  if(parentId){const parent=await query<{post_id:string}>('SELECT post_id FROM comments WHERE id=$1 AND deleted_at IS NULL LIMIT 1',[parentId]);if(!parent.rows[0]||parent.rows[0].post_id!==postId)throw new Error('Invalid parent comment');}
   const result = await query<{id:string;created_at:Date}>('INSERT INTO comments(post_id,author_id,parent_id,body) VALUES($1,$2,$3,$4) RETURNING id,created_at',[postId,userId,parentId ?? null,text]);
   return { id:result.rows[0].id, createdAt:result.rows[0].created_at.toISOString() };
 }
