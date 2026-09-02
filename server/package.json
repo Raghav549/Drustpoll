@@ -11,6 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "migrate": "tsx src/migrate.ts",
     "worker:features": "tsx src/run-feature-worker.ts",
+    "worker:media": "tsx src/run-media-worker.ts",
     "test": "node --test dist/tests/*.test.js"
   },
   "dependencies": {
