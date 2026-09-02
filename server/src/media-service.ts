@@ -30,6 +30,7 @@ export async function markUploadVerified(assetId:string,detectedMime:string,byte
     const asset=await client.query<{media_type:MediaType;declared_mime:string;owner_id:string}>('SELECT media_type,declared_mime,owner_id FROM media_assets WHERE id=$1 FOR UPDATE',[assetId]);
     if(!asset.rowCount)throw new Error('Media asset not found');
     const row=asset.rows[0]; assertMime(row.media_type,detectedMime);
+    if(detectedMime!==row.declared_mime)throw new Error('Detected media type does not match declaration');
     const size=Number(byteSize); if(!Number.isSafeInteger(size)||size<=0||size>LIMITS[row.media_type])throw new Error('Invalid verified media size');
     await client.query(`UPDATE media_assets SET detected_mime=$2,byte_size=$3,width=$4,height=$5,duration_ms=$6,status='scanning',updated_at=now() WHERE id=$1`,[assetId,detectedMime,size,width,height,durationMs]);
     for(const jobType of ['probe','scan','thumbnail','moderation','transcode']) await client.query('INSERT INTO media_jobs(asset_id,job_type) VALUES($1,$2) ON CONFLICT DO NOTHING',[assetId,jobType]);
@@ -39,11 +40,18 @@ export async function markUploadVerified(assetId:string,detectedMime:string,byte
 
 export async function markMediaReady(assetId:string){
   return withTransaction(async client=>{
-    const r=await client.query<{moderation_status:string}>('SELECT moderation_status FROM media_assets WHERE id=$1 FOR UPDATE',[assetId]);
+    const r=await client.query<{moderation_status:string;status:string}>('SELECT moderation_status,status FROM media_assets WHERE id=$1 FOR UPDATE',[assetId]);
     if(!r.rowCount)throw new Error('Media asset not found');
     if(r.rows[0].moderation_status!=='approved')throw new Error('Media moderation is not approved');
+    const jobs=await client.query<{job_type:string;status:string}>(`SELECT job_type,status FROM media_jobs WHERE asset_id=$1`,[assetId]);
+    const required=['probe','scan','thumbnail','moderation','transcode'];
+    const state=new Map(jobs.rows.map(job=>[job.job_type,job.status]));
+    if(required.some(job=>state.get(job)!=='succeeded'))throw new Error('Media processing is not complete');
+    const asset=await client.query<{media_type:MediaType;storage_key:string}>(`SELECT media_type,storage_key FROM media_assets WHERE id=$1`,[assetId]);
+    if(!asset.rowCount)throw new Error('Media asset not found');
+    const rendition=await client.query(`SELECT 1 FROM media_renditions WHERE asset_id=$1 AND rendition_type IN ('original','image','hls','dash','preview') LIMIT 1`,[assetId]);
+    if(!rendition.rowCount)throw new Error('Media rendition is missing');
     await client.query("UPDATE media_assets SET status='ready',updated_at=now() WHERE id=$1",[assetId]);
-    await client.query("UPDATE media_jobs SET status='succeeded',finished_at=now() WHERE asset_id=$1 AND status IN ('queued','running')",[assetId]);
     return {assetId,status:'ready'};
   });
 }
