@@ -1,36 +1,9 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link } from 'expo-router';
 import { AppShell } from '../src/ui/AppShell';
-import { colors, radius, spacing } from '../src/ui/theme';
+import { colors, elevation, radius, spacing, type } from '../src/ui/theme';
 
 export default function Cart() {
-  return (
-    <AppShell>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.kicker}>MARKET</Text>
-        <Text style={styles.title}>Your cart</Text>
-        <View style={styles.empty}>
-          <Text style={styles.icon}>◇</Text>
-          <Text style={styles.emptyTitle}>Nothing here yet.</Text>
-          <Text style={styles.emptyBody}>Products you save from profiles and shops will appear here before checkout.</Text>
-        </View>
-        <View style={styles.security}><Text style={styles.securityTitle}>Checkout principle</Text><Text style={styles.securityBody}>Keep social identity, seller authorization and payment processing separated so a commerce action cannot silently expand social permissions.</Text></View>
-        <Pressable style={styles.button}><Text style={styles.buttonText}>Continue shopping</Text></Pressable>
-      </ScrollView>
-    </AppShell>
-  );
+  return <AppShell><ScrollView contentContainerStyle={styles.content}><Text style={styles.kicker}>MARKET</Text><Text style={styles.title}>Your cart</Text><View style={styles.empty}><Text style={styles.icon}>◇</Text><Text style={styles.emptyTitle}>Nothing here yet.</Text><Text style={styles.emptyBody}>Products you save from profiles and shops can come here before checkout.</Text><Link href="/shop" asChild><Pressable accessibilityRole="button" style={({pressed})=>[styles.button,pressed&&styles.pressed]}><Text style={styles.buttonText}>Continue shopping</Text></Pressable></Link></View><View style={styles.security}><Text style={styles.securityKicker}>TRUST BY DESIGN</Text><Text style={styles.securityTitle}>Checkout stays explicit.</Text><Text style={styles.securityBody}>Seller authorization, order confirmation and payment state are separate. No purchase is silently created by a social interaction.</Text></View></ScrollView></AppShell>;
 }
-
-const styles = StyleSheet.create({
-  content: { padding: spacing.xl, gap: spacing.lg },
-  kicker: { fontSize: 11, fontWeight: '800', letterSpacing: 1.8, color: colors.muted },
-  title: { fontSize: 34, fontWeight: '800', color: colors.ink },
-  empty: { backgroundColor: colors.surface, borderRadius: radius.xl, minHeight: 250, alignItems: 'center', justifyContent: 'center', padding: spacing.xxl, borderWidth: 1, borderColor: colors.line },
-  icon: { fontSize: 38, color: colors.accent },
-  emptyTitle: { fontSize: 21, fontWeight: '800', color: colors.ink, marginTop: 12 },
-  emptyBody: { textAlign: 'center', color: colors.muted, lineHeight: 20, marginTop: 6, maxWidth: 320 },
-  security: { backgroundColor: colors.successSoft, borderRadius: radius.lg, padding: spacing.xl },
-  securityTitle: { color: colors.success, fontWeight: '800' },
-  securityBody: { color: colors.ink, lineHeight: 20, marginTop: 6, fontSize: 13 },
-  button: { backgroundColor: colors.dark, borderRadius: radius.md, paddingVertical: 15, alignItems: 'center' },
-  buttonText: { color: '#fff', fontWeight: '800' },
-});
+const styles=StyleSheet.create({content:{padding:spacing.xl,gap:spacing.lg},kicker:{fontSize:type.labelSM,fontWeight:'800',letterSpacing:1.8,color:colors.commerce},title:{fontSize:type.displayLG,fontWeight:'800',color:colors.ink},empty:{backgroundColor:colors.surface,borderRadius:radius.hero,minHeight:300,alignItems:'center',justifyContent:'center',padding:spacing.xxl,borderWidth:1,borderColor:colors.line,...elevation.low},icon:{fontSize:42,color:colors.commerce},emptyTitle:{fontSize:type.titleLG,fontWeight:'800',color:colors.ink,marginTop:12},emptyBody:{textAlign:'center',color:colors.muted,lineHeight:21,marginTop:6,maxWidth:340,fontSize:type.bodySM},button:{marginTop:18,backgroundColor:colors.commerce,borderRadius:radius.md,paddingHorizontal:18,paddingVertical:12,minHeight:44,alignItems:'center',justifyContent:'center'},pressed:{opacity:.72},buttonText:{color:colors.white,fontWeight:'800'},security:{backgroundColor:colors.successSoft,borderRadius:radius.lg,padding:spacing.xl,borderWidth:1,borderColor:'#CFE9D9'},securityKicker:{fontSize:type.labelSM,fontWeight:'800',letterSpacing:1.6,color:colors.success},securityTitle:{fontSize:type.titleMD,fontWeight:'800',color:colors.ink,marginTop:4},securityBody:{color:colors.inkSoft,lineHeight:21,marginTop:6,fontSize:type.bodySM}});
