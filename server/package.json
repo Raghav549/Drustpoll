@@ -10,6 +10,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "migrate": "tsx src/migrate.ts",
+    "worker:features": "tsx src/run-feature-worker.ts",
     "test": "node --test dist/tests/*.test.js"
   },
   "dependencies": {
