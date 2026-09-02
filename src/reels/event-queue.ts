@@ -1,9 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { recordReelWatchEvents } from '../../src/api/client';
+import { recordReelWatchEvents } from '../api/client';
 
 export type QueuedReelEvent={postId:string;eventType:'impression'|'start'|'progress'|'complete'|'skip'|'replay'|'like'|'save'|'share'|'comment'|'not_interested';position?:number;watchedMs?:number;videoDurationMs?:number;clientEventId:string};
-const KEY='drustpoll.reels.event-queue.v1';
-const MAX=500;
+const KEY='drustpoll.reels.event-queue.v1';const MAX=500;
 async function read():Promise<QueuedReelEvent[]>{try{return JSON.parse((await AsyncStorage.getItem(KEY))??'[]') as QueuedReelEvent[];}catch{return[];}}
 async function write(items:QueuedReelEvent[]){await AsyncStorage.setItem(KEY,JSON.stringify(items.slice(-MAX)));}
 export async function enqueueReelEvents(events:QueuedReelEvent[]){if(!events.length)return;const current=await read();const ids=new Set(current.map(x=>x.clientEventId));for(const event of events)if(!ids.has(event.clientEventId)){current.push(event);ids.add(event.clientEventId);}await write(current);}
