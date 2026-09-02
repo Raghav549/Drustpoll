@@ -43,16 +43,19 @@ export async function getCart(buyerId: string) {
 
 export async function addCartItem(buyerId: string, productId: string, quantity: number) {
   if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100) throw new Error('Invalid quantity');
-  return withTransaction(async client => {
+  await withTransaction(async client => {
     const product = await client.query<{price_minor:string;currency:string;inventory:number;status:string}>('SELECT price_minor,currency,inventory,status FROM shop_products WHERE id=$1 FOR UPDATE',[productId]);
     const p=product.rows[0];
     if (!p || p.status!=='active') throw new Error('Product not found or inactive');
     if (p.inventory < quantity) throw new Error('Insufficient inventory');
     const cart = await client.query<{id:string;currency:string}>('INSERT INTO carts(buyer_id,currency) VALUES($1,$2) ON CONFLICT(buyer_id) DO UPDATE SET updated_at=now() RETURNING id,currency',[buyerId,p.currency]);
     if (cart.rows[0].currency !== p.currency) throw new Error('Cart currency mismatch');
-    await client.query('INSERT INTO cart_items(cart_id,product_id,quantity,unit_price_minor) VALUES($1,$2,$3,$4) ON CONFLICT(cart_id,product_id) DO UPDATE SET quantity=cart_items.quantity+EXCLUDED.quantity,unit_price_minor=EXCLUDED.unit_price_minor',[cart.rows[0].id,productId,quantity,p.price_minor]);
-    return getCart(buyerId);
+    const existing = await client.query<{quantity:number}>('SELECT quantity FROM cart_items WHERE cart_id=$1 AND product_id=$2 FOR UPDATE',[cart.rows[0].id,productId]);
+    const nextQuantity = (existing.rows[0]?.quantity ?? 0) + quantity;
+    if (nextQuantity > p.inventory) throw new Error('Insufficient inventory');
+    await client.query('INSERT INTO cart_items(cart_id,product_id,quantity,unit_price_minor) VALUES($1,$2,$3,$4) ON CONFLICT(cart_id,product_id) DO UPDATE SET quantity=EXCLUDED.quantity,unit_price_minor=EXCLUDED.unit_price_minor',[cart.rows[0].id,productId,nextQuantity,p.price_minor]);
   });
+  return getCart(buyerId);
 }
 
 export async function updateCartItem(buyerId: string, productId: string, quantity: number) {
@@ -60,7 +63,11 @@ export async function updateCartItem(buyerId: string, productId: string, quantit
   const cart = await query<{id:string}>('SELECT id FROM carts WHERE buyer_id=$1',[buyerId]);
   if (!cart.rows[0]) return getCart(buyerId);
   if (quantity===0) await query('DELETE FROM cart_items WHERE cart_id=$1 AND product_id=$2',[cart.rows[0].id,productId]);
-  else await query('UPDATE cart_items SET quantity=$1 WHERE cart_id=$2 AND product_id=$3',[quantity,cart.rows[0].id,productId]);
+  else {
+    const inventory = await query<{inventory:number}>('SELECT inventory FROM shop_products WHERE id=$1 AND status=\'active\'',[productId]);
+    if (!inventory.rows[0] || quantity > inventory.rows[0].inventory) throw new Error('Insufficient inventory');
+    await query('UPDATE cart_items SET quantity=$1 WHERE cart_id=$2 AND product_id=$3',[quantity,cart.rows[0].id,productId]);
+  }
   return getCart(buyerId);
 }
 
@@ -68,7 +75,7 @@ export async function placeOrder(buyerId: string) {
   return withTransaction(async client => {
     const cart = await client.query<{id:string;currency:string}>('SELECT id,currency FROM carts WHERE buyer_id=$1 FOR UPDATE',[buyerId]);
     if (!cart.rows[0]) throw new Error('Cart is empty');
-    const items = await client.query<{product_id:string;quantity:number;unit_price_minor:string;title:string;seller_id:string;inventory:number;status:string}>('SELECT i.product_id,i.quantity,i.unit_price_minor,p.title,p.seller_id,p.inventory,p.status FROM cart_items i JOIN shop_products p ON p.id=i.product_id WHERE i.cart_id=$1 FOR UPDATE',[cart.rows[0].id]);
+    const items = await client.query<{product_id:string;quantity:number;unit_price_minor:string;title:string;seller_id:string;inventory:number;status:string}>('SELECT i.product_id,i.quantity,p.price_minor AS unit_price_minor,p.title,p.seller_id,p.inventory,p.status FROM cart_items i JOIN shop_products p ON p.id=i.product_id WHERE i.cart_id=$1 FOR UPDATE',[cart.rows[0].id]);
     if (!items.rows.length) throw new Error('Cart is empty');
     let total=0;
     for(const item of items.rows){ if(item.status!=='active'||item.inventory<item.quantity) throw new Error('Cart contains unavailable inventory'); total += Number(item.unit_price_minor)*item.quantity; }
