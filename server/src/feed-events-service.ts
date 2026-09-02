@@ -1,20 +1,17 @@
 import { query, withTransaction } from './db.js';
 
 export type FeedEventType =
-  | 'impression'
-  | 'open'
-  | 'dwell'
-  | 'like'
-  | 'comment'
-  | 'save'
-  | 'share'
-  | 'follow'
-  | 'hide'
-  | 'not_interested'
-  | 'report'
-  | 'mute';
+  | 'impression' | 'open' | 'dwell' | 'like' | 'comment' | 'save' | 'share'
+  | 'follow' | 'hide' | 'not_interested' | 'report' | 'mute';
 
 const MEANINGFUL = new Set<FeedEventType>(['comment','save','share','follow','like']);
+const EVENT_TYPES = new Set<FeedEventType>([
+  'impression','open','dwell','like','comment','save','share','follow','hide','not_interested','report','mute',
+]);
+
+function validId(value: unknown) { return typeof value === 'string' && value.length >= 1 && value.length <= 200; }
+function validClientEventId(value: unknown) { return typeof value === 'string' && value.length >= 1 && value.length <= 128; }
+function validFinite(value: unknown) { return value == null || (typeof value === 'number' && Number.isFinite(value)); }
 
 export async function recordFeedEvents(userId: string, events: Array<{
   postId?: string;
@@ -25,21 +22,33 @@ export async function recordFeedEvents(userId: string, events: Array<{
   clientEventId?: string;
 }>) {
   const limited = events.slice(0, 100);
-  if (!limited.length) return { accepted: 0 };
+  if (!limited.length) return { accepted: 0, acceptedClientEventIds: [] as string[] };
+
+  const valid = limited.filter(event =>
+    EVENT_TYPES.has(event.eventType) &&
+    validClientEventId(event.clientEventId) &&
+    (!event.postId || validId(event.postId)) &&
+    (!event.creatorId || validId(event.creatorId)) &&
+    (!event.sessionId || validId(event.sessionId)) &&
+    validFinite(event.valueNum)
+  );
+
+  if (!valid.length) return { accepted: 0, acceptedClientEventIds: [] as string[] };
 
   return withTransaction(async client => {
     let accepted = 0;
-    for (const event of limited) {
-      const result = await client.query(
+    const acceptedClientEventIds: string[] = [];
+    for (const event of valid) {
+      const result = await client.query<{client_event_id:string}>(
         `INSERT INTO feed_events(user_id,post_id,creator_id,event_type,value_num,session_id,client_event_id)
          VALUES($1,$2,$3,$4,$5,$6,$7)
-         ON CONFLICT DO NOTHING`,
-        [userId,event.postId ?? null,event.creatorId ?? null,event.eventType,
-         Number.isFinite(event.valueNum ?? 0) ? event.valueNum ?? null : null,
-         event.sessionId ?? null,event.clientEventId ?? null],
+         ON CONFLICT(user_id,client_event_id) DO NOTHING
+         RETURNING client_event_id`,
+        [userId,event.postId ?? null,event.creatorId ?? null,event.eventType,event.valueNum ?? null,event.sessionId ?? null,event.clientEventId],
       );
       if (!result.rowCount) continue;
       accepted += 1;
+      acceptedClientEventIds.push(result.rows[0].client_event_id);
 
       if (event.postId) {
         const field = event.eventType === 'impression' ? 'impressions'
@@ -57,6 +66,6 @@ export async function recordFeedEvents(userId: string, events: Array<{
         }
       }
     }
-    return { accepted };
+    return { accepted, acceptedClientEventIds };
   });
 }
