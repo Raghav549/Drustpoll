@@ -1,49 +1,7 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppShell } from '../src/ui/AppShell';
-import { colors, radius, spacing } from '../src/ui/theme';
+import { colors, elevation, radius, spacing, type } from '../src/ui/theme';
 
-const threads = [
-  ['A', 'Aarav', 'Loved the new collection.', '2m'],
-  ['M', 'Maya', 'Are you joining the room tonight?', '18m'],
-  ['K', 'Kabir', 'That local place is brilliant.', '1h'],
-];
-
-export default function Messages() {
-  return (
-    <AppShell>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.kicker}>PRIVATE</Text>
-        <Text style={styles.title}>Messages</Text>
-        <Text style={styles.subtitle}>Conversations stay separate from public social activity.</Text>
-        <View style={styles.list}>
-          {threads.map(([initial, name, message, time]) => (
-            <View key={name} style={styles.row}>
-              <View style={styles.avatar}><Text style={styles.avatarText}>{initial}</Text></View>
-              <View style={styles.copy}><Text style={styles.name}>{name}</Text><Text style={styles.message} numberOfLines={1}>{message}</Text></View>
-              <Text style={styles.time}>{time}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={styles.note}><Text style={styles.noteTitle}>Privacy architecture</Text><Text style={styles.noteBody}>Private messaging will be designed around encrypted content, device/session controls and minimal server-readable metadata.</Text></View>
-      </ScrollView>
-    </AppShell>
-  );
-}
-
-const styles = StyleSheet.create({
-  content: { padding: spacing.xl, gap: spacing.md },
-  kicker: { fontSize: 11, fontWeight: '800', letterSpacing: 1.8, color: colors.muted },
-  title: { fontSize: 34, fontWeight: '800', color: colors.ink },
-  subtitle: { fontSize: 15, lineHeight: 22, color: colors.muted, marginBottom: 8 },
-  list: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden' },
-  row: { minHeight: 76, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: colors.line },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.dark, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontWeight: '800' },
-  copy: { flex: 1, gap: 3 },
-  name: { fontSize: 15, fontWeight: '800', color: colors.ink },
-  message: { color: colors.muted, fontSize: 13 },
-  time: { color: colors.faint, fontSize: 11 },
-  note: { backgroundColor: colors.successSoft, borderRadius: radius.lg, padding: spacing.xl, marginTop: 4 },
-  noteTitle: { fontWeight: '800', color: colors.success },
-  noteBody: { color: colors.ink, lineHeight: 20, marginTop: 6, fontSize: 13 },
-});
+const threads = [['A','Aarav','Loved the new collection.','2m'],['M','Maya','Are you joining the room tonight?','18m'],['K','Kabir','That local place is brilliant.','1h']] as const;
+export default function Messages(){return <AppShell><ScrollView contentContainerStyle={styles.content}><View style={styles.header}><View><Text style={styles.kicker}>CONNECT</Text><Text style={styles.title}>Messages</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Search messages" style={styles.search}><Text style={styles.searchText}>⌕</Text></Pressable></View><Text style={styles.subtitle}>Private conversations stay separate from public activity.</Text><View style={styles.filters}><Text style={styles.filterActive}>All</Text><Text style={styles.filter}>Requests</Text><Text style={styles.filter}>Unread</Text></View><View style={styles.list}>{threads.map(([initial,name,message,time],i)=><Pressable key={name} accessibilityRole="button" accessibilityLabel={`Open conversation with ${name}`} style={({pressed})=>[styles.row,pressed&&styles.pressed]}><View style={styles.avatar}><Text style={styles.avatarText}>{initial}</Text></View><View style={styles.copy}><Text style={styles.name}>{name}</Text><Text style={styles.message} numberOfLines={1}>{message}</Text></View><View style={styles.trailing}><Text style={styles.time}>{time}</Text>{i===0&&<View style={styles.unread} accessibilityLabel="Unread"/>}</View></Pressable>)}</View><View style={styles.note}><Text style={styles.noteKicker}>PRIVATE BY DESIGN</Text><Text style={styles.noteTitle}>Your conversations are their own space.</Text><Text style={styles.noteBody}>Encryption, device controls and minimal readable metadata are treated as core architecture — not a visual promise.</Text></View></ScrollView></AppShell>}
+const styles=StyleSheet.create({content:{padding:spacing.xl,gap:spacing.md},header:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},kicker:{fontSize:type.labelSM,fontWeight:'800',letterSpacing:1.8,color:colors.brand},title:{fontSize:type.displayLG,fontWeight:'800',color:colors.ink},search:{width:44,height:44,borderRadius:radius.md,borderWidth:1,borderColor:colors.line,backgroundColor:colors.surface,alignItems:'center',justifyContent:'center',...elevation.low},searchText:{fontSize:23,color:colors.ink},subtitle:{fontSize:type.bodySM,lineHeight:21,color:colors.muted},filters:{flexDirection:'row',gap:10,paddingVertical:3},filterActive:{paddingHorizontal:14,paddingVertical:9,borderRadius:radius.pill,backgroundColor:colors.brand,color:colors.white,fontWeight:'800'},filter:{paddingHorizontal:14,paddingVertical:9,borderRadius:radius.pill,backgroundColor:colors.surface,borderWidth:1,borderColor:colors.line,color:colors.muted,fontWeight:'700'},list:{backgroundColor:colors.surface,borderRadius:radius.lg,borderWidth:1,borderColor:colors.line,overflow:'hidden',...elevation.low},row:{minHeight:82,paddingHorizontal:16,flexDirection:'row',alignItems:'center',gap:12,borderBottomWidth:1,borderBottomColor:colors.line},pressed:{opacity:.72},avatar:{width:48,height:48,borderRadius:24,backgroundColor:colors.brand,alignItems:'center',justifyContent:'center'},avatarText:{color:colors.white,fontWeight:'800'},copy:{flex:1,gap:4},name:{fontSize:type.bodyMD,fontWeight:'800',color:colors.ink},message:{color:colors.muted,fontSize:type.bodySM},trailing:{alignItems:'flex-end',gap:8},time:{color:colors.faint,fontSize:type.labelSM},unread:{width:8,height:8,borderRadius:4,backgroundColor:colors.brand},note:{backgroundColor:colors.successSoft,borderRadius:radius.lg,padding:spacing.xl,borderWidth:1,borderColor:'#CFE9D9'},noteKicker:{fontSize:type.labelSM,fontWeight:'800',letterSpacing:1.6,color:colors.success},noteTitle:{fontSize:type.titleMD,fontWeight:'800',color:colors.ink,marginTop:4},noteBody:{color:colors.inkSoft,lineHeight:21,marginTop:6,fontSize:type.bodySM}});
