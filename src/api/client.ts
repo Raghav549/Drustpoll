@@ -8,4 +8,8 @@ export async function startReelWatchSession(clientSessionId:string){return api<{
 export async function recordReelWatchEvents(sessionId:string,events:Array<{postId:string;eventType:'impression'|'start'|'progress'|'complete'|'skip'|'replay'|'like'|'save'|'share'|'comment'|'not_interested';position?:number;watchedMs?:number;videoDurationMs?:number;clientEventId:string}>){return api<{accepted:number}>(`/v1/reels/watch-events`,{method:'POST',body:JSON.stringify({sessionId,events})});}
 export async function endReelWatchSession(sessionId:string){return api(`/v1/reels/watch-sessions/${encodeURIComponent(sessionId)}`,{method:'DELETE'});}
 export async function getShopRecommendations(){return api<{items:Array<{id:string;shop_id:string;title:string;description:string;price_minor:number;currency:string;inventory:number;score:number;reason:string}>}>(`/v1/shop/recommended`);}
+export async function recordCommerceEvent(input:{productId:string;eventType:'impression'|'open'|'view'|'add_cart'|'remove_cart'|'purchase'|'save'|'not_interested';dwellMs?:number;clientEventId?:string}){return api<{accepted:boolean}>(`/v1/shop/events`,{method:'POST',body:JSON.stringify(input)});}
+export async function getCart(){return api(`/v1/cart`);}
+export async function addCartItem(productId:string,quantity:number){return api(`/v1/cart/items`,{method:'POST',body:JSON.stringify({productId,quantity})});}
+export async function checkout(idempotencyKey:string){return api(`/v1/orders`,{method:'POST',body:JSON.stringify({idempotencyKey})});}
 export async function recordExposure(items:Array<{postId:string;creatorId:string;surface:'feed'|'reels'|'shop';position:number}>){return api('/v1/recommendation/exposure',{method:'POST',body:JSON.stringify({items})});}
