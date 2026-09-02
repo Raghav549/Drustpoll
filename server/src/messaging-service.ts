@@ -1,5 +1,12 @@
 import { query, withTransaction } from './db.js';
 
+async function assertNoBlock(actorId:string, participantIds:string[]){
+  const ids=[...new Set(participantIds.filter(id=>id!==actorId))];
+  if(!ids.length)return;
+  const result=await query(`SELECT 1 FROM user_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=ANY($2::uuid[])) OR (b.blocked_id=$1 AND b.blocker_id=ANY($2::uuid[])) LIMIT 1`,[actorId,ids]);
+  if(result.rowCount)throw new Error('Messaging blocked');
+}
+
 export async function listConversations(userId: string, limit = 30) {
   const size = Math.min(Math.max(Math.trunc(limit), 1), 50);
   const result = await query(`
@@ -15,6 +22,7 @@ export async function listConversations(userId: string, limit = 30) {
 export async function createConversation(userId: string, participantIds: string[]) {
   const members = [...new Set([userId, ...participantIds.filter(Boolean)])];
   if (members.length < 2 || members.length > 50) throw new Error('Conversation must have 2 to 50 members');
+  await assertNoBlock(userId,members);
   return withTransaction(async client => {
     const users = await client.query('SELECT id FROM users WHERE id = ANY($1::uuid[])', [members]);
     if (users.rowCount !== members.length) throw new Error('User not found');
@@ -27,6 +35,11 @@ export async function createConversation(userId: string, participantIds: string[
 async function assertMember(userId: string, conversationId: string) {
   const result = await query('SELECT 1 FROM conversation_members WHERE conversation_id=$1 AND user_id=$2 AND left_at IS NULL', [conversationId, userId]);
   if (!result.rowCount) throw new Error('Conversation not found');
+}
+
+async function conversationParticipants(conversationId:string,userId:string){
+  const result=await query('SELECT user_id FROM conversation_members WHERE conversation_id=$1 AND user_id<>$2 AND left_at IS NULL',[conversationId,userId]);
+  return result.rows.map(r=>String(r.user_id));
 }
 
 export async function listMessages(userId: string, conversationId: string, limit = 50, before?: string) {
@@ -43,6 +56,7 @@ export async function listMessages(userId: string, conversationId: string, limit
 
 export async function sendEncryptedMessage(userId: string, conversationId: string, ciphertext: string, keyVersion = 1) {
   await assertMember(userId, conversationId);
+  await assertNoBlock(userId,await conversationParticipants(conversationId,userId));
   if (!ciphertext || ciphertext.length > 100_000) throw new Error('Invalid message ciphertext');
   if (!Number.isInteger(keyVersion) || keyVersion < 1) throw new Error('Invalid key version');
   const result = await query<{id:string;created_at:Date}>(
