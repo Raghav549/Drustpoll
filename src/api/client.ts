@@ -13,6 +13,7 @@ export async function getCart(){return api<{id:string|null;items:Array<{productI
 export async function addCartItem(productId:string,quantity:number){return api(`/v1/cart/items`,{method:'POST',body:JSON.stringify({productId,quantity})});}
 export async function updateCartItem(productId:string,quantity:number){return api<{id:string|null;items:Array<{productId:string;quantity:number;unitPriceMinor:number;title:string;currency:string;inventory:number}>}>(`/v1/cart/items`,{method:'PATCH',body:JSON.stringify({productId,quantity})});}
 export async function checkout(idempotencyKey:string){return api<{orders:Array<{orderId:string;totalMinor:number;currency:string;status:string}>}>(`/v1/orders`,{method:'POST',body:JSON.stringify({idempotencyKey})});}
+export async function createPost(input:{caption:string;visibility:'public'|'followers'|'private';mediaAssetIds?:string[]}){return api<{id:string;createdAt:string}>('/v1/posts',{method:'POST',body:JSON.stringify(input)});}
 export async function recordExposure(items:Array<{postId:string;creatorId:string;surface:'feed'|'reels'|'shop';position:number}>){return api('/v1/recommendation/exposure',{method:'POST',body:JSON.stringify({items})});}
 export type PrivacySettings={profile_visibility:'public'|'followers'|'private';activity_visibility:'everyone'|'followers'|'only_me';discoverability:'discoverable'|'hidden';message_requests:'everyone'|'followers'|'nobody';personalized_recommendations:boolean;personalized_ads:boolean};
 export async function getPrivacy(){return api<{privacy:PrivacySettings}>('/v1/privacy');}
