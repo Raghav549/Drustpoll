@@ -1,42 +1,19 @@
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { Link } from 'expo-router';
 import { AppShell } from '../src/ui/AppShell';
 import { colors, radius, spacing } from '../src/ui/theme';
+import { getFeed, type FeedPost, recordExposure } from '../src/api/client';
 
-const topics = ['For You', 'Following', 'Trending', 'Nearby'];
-
-export default function Home() {
-  return (
-    <AppShell>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <View><Text style={styles.eyebrow}>DRUSTPOLL</Text><Text style={styles.title}>Your world, naturally.</Text></View>
-          <Link href="/shop" asChild><Pressable style={styles.shopButton}><Text style={styles.shopText}>Shop</Text></Pressable></Link>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>
-          {topics.map((topic, index) => <View key={topic} style={[styles.pill, index === 0 && styles.activePill]}><Text style={[styles.pillText, index === 0 && styles.activePillText]}>{topic}</Text></View>)}
-        </ScrollView>
-        <View style={styles.hero}>
-          <Text style={styles.heroLabel}>DISCOVER</Text>
-          <Text style={styles.heroTitle}>People, ideas & products worth your attention.</Text>
-          <Text style={styles.heroBody}>Personalized around relevance and connection, while deliberately leaving room for novelty, diversity and user control.</Text>
-        </View>
-        <View style={styles.card}>
-          <View style={styles.avatar}><Text style={styles.avatarText}>D</Text></View>
-          <View style={styles.cardCopy}><Text style={styles.name}>Drustpoll</Text><Text style={styles.meta}>A new kind of social space</Text></View>
-          <Text style={styles.more}>•••</Text>
-          <Text style={styles.post}>Your feed should belong to you. The ranking layer will balance relevance, meaningful interactions, freshness, diversity, safety and negative feedback—not raw engagement alone.</Text>
-          <View style={styles.actions}><Text>♡ Like</Text><Text>◌ Comment</Text><Text>↗ Share</Text><Text>⌁ Save</Text></View>
-        </View>
-        <View style={styles.grid}>
-          <Link href="/reels" asChild><Pressable style={styles.tile}><Text style={styles.tileIcon}>▶</Text><Text style={styles.tileTitle}>Discover</Text><Text style={styles.tileBody}>Short video and ideas</Text></Pressable></Link>
-          <Link href="/cart" asChild><Pressable style={styles.tile}><Text style={styles.tileIcon}>◇</Text><Text style={styles.tileTitle}>Cart</Text><Text style={styles.tileBody}>Products from profiles</Text></Pressable></Link>
-        </View>
-      </ScrollView>
-    </AppShell>
-  );
+export default function Home(){
+ const [mode,setMode]=useState<'for_you'|'following'>('for_you');const [items,setItems]=useState<FeedPost[]>([]);const [loading,setLoading]=useState(true);const [refreshing,setRefreshing]=useState(false);const [error,setError]=useState<string|null>(null);
+ const load=useCallback(async(refresh=false)=>{if(refresh)setRefreshing(true);else setLoading(true);setError(null);try{const r=await getFeed(mode);setItems(r.items??[]);if(r.items?.length)void recordExposure(r.items.slice(0,20).map((p,i)=>({postId:p.id,creatorId:p.author_id,surface:'feed' as const,position:i})).filter(x=>x.creatorId));}catch(e){setError(e instanceof Error?e.message:'Could not load feed');}finally{setLoading(false);setRefreshing(false);}},[mode]);
+ useEffect(()=>{void load();},[load]);
+ return <AppShell><ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>void load(true)}/>} contentContainerStyle={styles.content}>
+  <View style={styles.header}><View><Text style={styles.eyebrow}>DRUSTPOLL</Text><Text style={styles.title}>Your world, naturally.</Text></View><Link href="/shop" asChild><Pressable style={styles.shopButton}><Text style={styles.shopText}>Shop</Text></Pressable></Link></View>
+  <View style={styles.tabs}><Pressable accessibilityRole="tab" accessibilityState={{selected:mode==='for_you'}} onPress={()=>setMode('for_you')} style={[styles.tab,mode==='for_you'&&styles.activeTab]}><Text style={mode==='for_you'?styles.activeText:styles.tabText}>For You</Text></Pressable><Pressable accessibilityRole="tab" accessibilityState={{selected:mode==='following'}} onPress={()=>setMode('following')} style={[styles.tab,mode==='following'&&styles.activeTab]}><Text style={mode==='following'?styles.activeText:styles.tabText}>Following</Text></Pressable></View>
+  {loading?<View style={styles.state}><Text style={styles.stateTitle}>Building your feed…</Text><Text style={styles.stateBody}>Balancing relevance, freshness, variety and safety.</Text></View>:error?<View style={styles.state}><Text style={styles.stateTitle}>Feed unavailable</Text><Text style={styles.stateBody}>{error}</Text><Pressable onPress={()=>void load()} style={styles.retry}><Text style={styles.retryText}>Try again</Text></Pressable></View>:items.length===0?<View style={styles.state}><Text style={styles.stateTitle}>Nothing here yet</Text><Text style={styles.stateBody}>Follow a few people or explore discovery to shape your world.</Text></View>:items.map(p=><View key={p.id} style={styles.card}><View style={styles.cardTop}><View style={styles.avatar}><Text style={styles.avatarText}>D</Text></View><View style={styles.cardCopy}><Text style={styles.name}>Creator</Text><Text style={styles.meta}>{new Date(p.created_at).toLocaleDateString()}</Text></View></View><Text style={styles.post}>{p.caption||'Shared a moment.'}</Text><View style={styles.actions}><Text>{p.like_count??0} Likes</Text><Text>{p.comment_count??0} Comments</Text><Text>{p.save_count??0} Saves</Text></View></View>)}
+ </ScrollView></AppShell>;
 }
-
-const styles = StyleSheet.create({
-  content:{padding:spacing.xl,gap:spacing.lg},header:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},eyebrow:{fontSize:11,fontWeight:'800',letterSpacing:2,color:colors.muted},title:{fontSize:26,fontWeight:'800',color:colors.ink,marginTop:3},shopButton:{backgroundColor:colors.dark,paddingHorizontal:16,paddingVertical:10,borderRadius:radius.md},shopText:{color:'#fff',fontWeight:'700'},pills:{gap:8},pill:{paddingHorizontal:15,paddingVertical:9,borderRadius:radius.pill,backgroundColor:colors.surface},activePill:{backgroundColor:colors.dark},pillText:{color:'#475467',fontWeight:'600'},activePillText:{color:'#fff'},hero:{backgroundColor:colors.accentSoft,borderRadius:radius.xl,padding:spacing.xl,gap:10},heroLabel:{fontSize:11,fontWeight:'800',letterSpacing:1.6,color:colors.accent},heroTitle:{fontSize:30,lineHeight:35,fontWeight:'800',color:colors.ink},heroBody:{fontSize:15,lineHeight:22,color:colors.muted},card:{backgroundColor:colors.surface,borderRadius:radius.lg,padding:spacing.lg,flexDirection:'row',flexWrap:'wrap',gap:12,borderWidth:1,borderColor:colors.line},avatar:{width:42,height:42,borderRadius:21,backgroundColor:colors.dark,alignItems:'center',justifyContent:'center'},avatarText:{color:'#fff',fontWeight:'800'},cardCopy:{flex:1},name:{fontWeight:'800',color:colors.ink},meta:{color:colors.faint,marginTop:3,fontSize:12},more:{color:colors.faint},post:{width:'100%',fontSize:16,lineHeight:23,color:'#344054'},actions:{width:'100%',flexDirection:'row',justifyContent:'space-between',paddingTop:4},grid:{flexDirection:'row',gap:12},tile:{flex:1,backgroundColor:colors.surface,borderRadius:radius.lg,padding:spacing.lg,minHeight:145,borderWidth:1,borderColor:colors.line},tileIcon:{fontSize:24,color:colors.dark},tileTitle:{fontSize:18,fontWeight:'800',marginTop:14,color:colors.ink},tileBody:{fontSize:12,color:colors.muted,marginTop:5}
-});
+const styles=StyleSheet.create({content:{padding:spacing.xl,gap:spacing.lg},header:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},eyebrow:{fontSize:11,fontWeight:'800',letterSpacing:2,color:colors.muted},title:{fontSize:26,fontWeight:'800',color:colors.ink,marginTop:3},shopButton:{backgroundColor:colors.dark,paddingHorizontal:16,paddingVertical:10,borderRadius:radius.md},shopText:{color:'#fff',fontWeight:'700'},tabs:{flexDirection:'row',gap:8},tab:{paddingHorizontal:16,paddingVertical:10,borderRadius:radius.pill,backgroundColor:colors.surface},activeTab:{backgroundColor:colors.dark},tabText:{color:colors.muted,fontWeight:'700'},activeText:{color:'#fff',fontWeight:'700'},state:{padding:spacing.xl,borderRadius:radius.xl,backgroundColor:colors.accentSoft,gap:8},stateTitle:{fontSize:19,fontWeight:'800',color:colors.ink},stateBody:{fontSize:14,lineHeight:21,color:colors.muted},retry:{alignSelf:'flex-start',backgroundColor:colors.dark,paddingHorizontal:14,paddingVertical:9,borderRadius:radius.md,marginTop:4},retryText:{color:'#fff',fontWeight:'700'},card:{backgroundColor:colors.surface,borderRadius:radius.lg,padding:spacing.lg,gap:14,borderWidth:1,borderColor:colors.line},cardTop:{flexDirection:'row',gap:12,alignItems:'center'},avatar:{width:42,height:42,borderRadius:21,backgroundColor:colors.dark,alignItems:'center',justifyContent:'center'},avatarText:{color:'#fff',fontWeight:'800'},cardCopy:{flex:1},name:{fontWeight:'800',color:colors.ink},meta:{fontSize:12,color:colors.faint,marginTop:3},post:{fontSize:16,lineHeight:23,color:'#344054'},actions:{flexDirection:'row',justifyContent:'space-between',paddingTop:4,color:colors.muted}}
+);
