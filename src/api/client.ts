@@ -1,7 +1,7 @@
 const API_URL=(process.env.EXPO_PUBLIC_API_URL??'').replace(/\/$/,'');
 export class ApiError extends Error{constructor(public status:number,message:string){super(message);}}
 export async function api<T>(path:string,init:RequestInit={}):Promise<T>{if(!API_URL)throw new ApiError(0,'EXPO_PUBLIC_API_URL is not configured');const res=await fetch(`${API_URL}${path}`,{...init,credentials:'include',headers:{'Content-Type':'application/json',...(init.headers??{})}});const text=await res.text();let data:any={};try{data=text?JSON.parse(text):{};}catch{data={error:'Invalid server response'};}if(!res.ok)throw new ApiError(res.status,String(data.error??`Request failed (${res.status})`));return data as T;}
-export type FeedPost={id:string;author_id:string;caption:string;visibility:string;created_at:string;like_count:number;comment_count:number;save_count:number;share_count:number;liked_by_me?:boolean;saved_by_me?:boolean;username?:string;display_name?:string;avatar_url?:string|null;media:Array<{type:'image'|'video';uri:string;storageKey?:string;alt?:string;width?:number|null;height?:number|null;durationMs?:number|null}>};
+export type FeedPost={id:string;author_id:string;caption:string;visibility:string;created_at:string;content_type?:string;content_warning?:string;location_label?:string|null;allow_comments?:boolean;metadata?:any;like_count:number;comment_count:number;save_count:number;share_count:number;liked_by_me?:boolean;saved_by_me?:boolean;username?:string;display_name?:string;avatar_url?:string|null;media:Array<{type:'image'|'video';uri:string;storageKey?:string;alt?:string;width?:number|null;height?:number|null;durationMs?:number|null}>};
 export async function getFeed(mode:'for_you'|'following'|'latest'='for_you',before?:string){return api<{items:FeedPost[];nextCursor?:string|null}>(`/v1/feed?mode=${mode}${before?`&before=${encodeURIComponent(before)}`:''}`);}
 export async function toggleReaction(postId:string){return api<{active:boolean;reaction:string|null}>(`/v1/posts/${encodeURIComponent(postId)}/reaction`,{method:'POST'});}
 export async function toggleSave(postId:string){return api<{saved:boolean}>(`/v1/posts/${encodeURIComponent(postId)}/save`,{method:'POST'});}
@@ -69,8 +69,11 @@ export async function updateProfileExtras(input:{creator?:Record<string,unknown>
 export async function followUser(targetUserId:string){return api<{state:string}>('/v1/social/follow',{method:'POST',body:JSON.stringify({targetUserId})});}
 export async function unfollowUser(targetUserId:string){return api<{state:string}>('/v1/social/follow',{method:'DELETE',body:JSON.stringify({targetUserId})});}
 export async function getConversations(limit=30){return api<{conversations:any[]}>(`/v1/messages/conversations?limit=${Math.min(Math.max(limit,1),50)}`);}
+export async function createConversation(participantIds:string[]){return api<{id:string;createdAt:string;participantIds:string[]}>('/v1/messages/conversations',{method:'POST',body:JSON.stringify({participantIds})});}
 export async function markConversationRead(id:string){return api<{updated:number}>(`/v1/messages/conversations/${encodeURIComponent(id)}/read`,{method:'POST'});}
 export async function getMessages(id:string,limit=50,before?:string){return api<{messages:any[];nextBefore:string|null}>(`/v1/messages/conversations/${encodeURIComponent(id)}/messages?limit=${Math.min(Math.max(limit,1),100)}${before?`&before=${encodeURIComponent(before)}`:''}`);}
+export async function sendEncryptedMessage(id:string,ciphertext:string,keyVersion=1,deviceId?:string){return api<{id:string;createdAt:string}>(`/v1/messages/conversations/${encodeURIComponent(id)}/messages`,{method:'POST',body:JSON.stringify({ciphertext,keyVersion,deviceId})});}
+export async function getDeviceKeys(userId:string){return api<{bundles:any[]}>(`/v1/messages/devices/${encodeURIComponent(userId)}`);}
 export async function getPrivacy(){return api<any>('/v1/privacy');}
 export async function updatePrivacy(input:any){return api<any>('/v1/privacy',{method:'PUT',body:JSON.stringify(input)});}
 export async function getNotifications(limit=30,before?:string){return api<any>(`/v1/notifications?limit=${Math.min(Math.max(limit,1),100)}${before?`&before=${encodeURIComponent(before)}`:''}`);}
@@ -84,5 +87,4 @@ export async function getSellerProducts(){return api<{products:any[]}>('/v1/shop
 export async function createSellerProduct(input:any){return api('/v1/shop/products',{method:'POST',body:JSON.stringify(input)});}
 export async function getSessions(){return api<{sessions:any[]}>('/v1/auth/sessions');}
 export async function revokeSession(id:string){return api(`/v1/auth/sessions/${encodeURIComponent(id)}/revoke`,{method:'POST'});}
-export async function revokeAllSessions(){return api('/v1/auth/sessions/revoke-all',{method:'POST'});
-}
+export async function revokeAllSessions(){return api('/v1/auth/sessions/revoke-all',{method:'POST'});}
