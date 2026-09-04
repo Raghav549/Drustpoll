@@ -44,8 +44,7 @@ export async function getDiscoveryPreferences(){return api<{preferences:any}>('/
 export async function updateDiscoveryPreferences(input:Record<string,unknown>){return api('/v1/discovery/preferences',{method:'PUT',body:JSON.stringify(input)});}
 export async function getShopRecommendations(){return api<{items:any[]}>(`/v1/shop/recommended`);}
 export async function getProduct(productId:string){return api<{product:any|null}>(`/v1/shop/products/${encodeURIComponent(productId)}`);}
-export async function recordCommerceEvent(input:any){return api('/v1/shop/events',{method:'POST',body:JSON.stringify(input)});
-}
+export async function recordCommerceEvent(input:any){return api('/v1/shop/events',{method:'POST',body:JSON.stringify(input));}
 export async function getCart(){return api<{id:string|null;items:any[]}>(`/v1/cart`);}
 export async function addCartItem(productId:string,quantity:number){return api(`/v1/cart/items`,{method:'POST',body:JSON.stringify({productId,quantity})});}
 export async function updateCartItem(productId:string,quantity:number){return api<{id:string|null;items:any[]}>(`/v1/cart/items`,{method:'PATCH',body:JSON.stringify({productId,quantity})});}
@@ -113,9 +112,13 @@ export async function requestReturn(orderId:string,reason:string,notes=''){retur
 export async function getReturns(orderId?:string){return api<{returns:any[]}>(`/v1/market/returns${orderId?`?orderId=${encodeURIComponent(orderId)}`:''}`);}
 export async function openOrderSupport(orderId:string,subject:string){return api(`/v1/market/orders/${encodeURIComponent(orderId)}/support`,{method:'POST',body:JSON.stringify({subject})});}
 export async function setShippingProfile(productId:string,input:any){return api(`/v1/market/products/${encodeURIComponent(productId)}/shipping`,{method:'PUT',body:JSON.stringify(input)});}
-export async function getSessions(){return api<{sessions:SessionInfo[]}>('/v1/auth/sessions');}
-export async function revokeSession(id:string){return api(`/v1/auth/sessions/${encodeURIComponent(id)}/revoke`,{method:'POST'});}
-export async function revokeAllSessions(){return api('/v1/auth/sessions/revoke-all',{method:'POST'});}
+export async function createProductVariant(productId:string,input:any){return api(`/v1/market/products/${encodeURIComponent(productId)}/variants`,{method:'POST',body:JSON.stringify(input)});}
+export async function updateProductVariant(variantId:string,input:any){return api(`/v1/market/variants/${encodeURIComponent(variantId)}`,{method:'PATCH',body:JSON.stringify(input)});}
+export async function deleteProductVariant(variantId:string){return api(`/v1/market/variants/${encodeURIComponent(variantId)}`,{method:'DELETE'});}
+export async function setStorefrontMetadata(shopId:string,input:any){return api(`/v1/market/shops/${encodeURIComponent(shopId)}/storefront`,{method:'PUT',body:JSON.stringify(input)});}
+export async function getShopDiscovery(limit=30){return api<{shops:any[]}>(`/v1/market/shops?limit=${limit}`);}
+export async function getShopCollections(shopId:string){return api<{collections:any[]}>(`/v1/market/shops/${encodeURIComponent(shopId)}/collections`);}
+export async function createShopCollection(shopId:string,input:any){return api(`/v1/market/shops/${encodeURIComponent(shopId)}/collections`,{method:'POST',body:JSON.stringify(input)});}
 export async function getSafetyState(targetUserId:string){return api<any>(`/v1/safety/state?targetUserId=${encodeURIComponent(targetUserId)}`);}
 export async function setBlocked(targetUserId:string,blocked:boolean){return api(`/v1/safety/block`,{method:blocked?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
 export async function setMuted(targetUserId:string,muted:boolean){return api(`/v1/safety/mute`,{method:muted?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
