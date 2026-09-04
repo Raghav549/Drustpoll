@@ -125,6 +125,11 @@ export async function getSavedForLater(){return api<{items:any[]}>('/v1/commerce
 export async function getAdvancedOrder(orderId:string){return api<any>(`/v1/commerce/orders/${encodeURIComponent(orderId)}`);}
 export async function reportOrderIssue(orderId:string,issueType:string,details=''){return api(`/v1/commerce/orders/${encodeURIComponent(orderId)}/issues`,{method:'POST',body:JSON.stringify({issueType,details})});}
 export async function requestExchange(orderId:string,productId:string,notes=''){return api(`/v1/commerce/orders/${encodeURIComponent(orderId)}/exchange`,{method:'POST',body:JSON.stringify({productId,notes})});}
+export async function getCheckoutState(key:string){return api<any>(`/v1/checkout/state?key=${encodeURIComponent(key)}`);}
+export async function prepareCheckout(key:string){return api<any>('/v1/checkout/prepare',{method:'POST',body:JSON.stringify({idempotencyKey:key})});}
+export async function setCheckoutAddress(sessionId:string,addressId:string){return api<any>(`/v1/checkout/${encodeURIComponent(sessionId)}/address`,{method:'PUT',body:JSON.stringify({addressId})});}
+export async function setCheckoutDelivery(sessionId:string,input:{code:string;feeMinor:number;minDays?:number;maxDays?:number}){return api<any>(`/v1/checkout/${encodeURIComponent(sessionId)}/delivery`,{method:'PUT',body:JSON.stringify(input)});}
+export async function setCheckoutPaymentMethod(sessionId:string,method:string){return api<any>(`/v1/checkout/${encodeURIComponent(sessionId)}/payment-method`,{method:'PUT',body:JSON.stringify({method})});}
 export async function getSafetyState(targetUserId:string){return api<any>(`/v1/safety/state?targetUserId=${encodeURIComponent(targetUserId)}`);}
 export async function setBlocked(targetUserId:string,blocked:boolean){return api(`/v1/safety/block`,{method:blocked?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
 export async function setMuted(targetUserId:string,muted:boolean){return api(`/v1/safety/mute`,{method:muted?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
