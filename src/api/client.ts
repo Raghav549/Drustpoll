@@ -85,40 +85,28 @@ export type SessionInfo={id:string;createdAt:string;lastSeenAt:string|null;expir
 export type SellerProduct={id:string;title:string;description?:string;price_minor:number;currency:string;inventory:number;category?:string|null;status:string};
 export async function getPrivacy(){return api<any>('/v1/privacy');}
 export async function updatePrivacy(input:any){return api<any>('/v1/privacy',{method:'PUT',body:JSON.stringify(input)});}
-export async function getPrivacyAudit(){return api<{events:any[]}>('/v1/privacy/audit');}
-export async function getDataInventory(){return api<{categories:any[];counts:any}>('/v1/privacy/inventory');}
-export async function getPrivacyPermissions(){return api<{permissions:any[]}>('/v1/privacy/permissions');}
-export async function getBlockedUsers(){return api<{items:any[]}>('/v1/privacy/blocked');}
-export async function getMutedUsers(){return api<{items:any[]}>('/v1/privacy/muted');}
-export async function getHiddenTerms(){return api<{items:any[]}>('/v1/privacy/hidden-terms');}
-export async function setHiddenTerm(term:string,kind:'word'|'topic',hidden=true){return api('/v1/privacy/hidden-terms',{method:hidden?'POST':'DELETE',body:JSON.stringify({term,kind})});}
-export async function resetRecommendations(){return api<{ok:boolean;resetAt:string}>('/v1/privacy/recommendations/reset',{method:'POST'});}
-export async function getDataRequests(){return api<{requests:any[]}>('/v1/privacy/data-requests');}
-export async function requestData(kind:'export'|'delete'){return api<any>('/v1/privacy/data-requests',{method:'POST',body:JSON.stringify({kind})});}
-export async function getAccountExperience(){return api<{preferences:any}>('/v1/account/experience');}
-export async function updateAccountExperience(input:any){return api<{preferences:any}>('/v1/account/experience',{method:'PUT',body:JSON.stringify(input)});}
-export async function getSecurityAlerts(){return api<{alerts:any[]}>('/v1/security/alerts');}
-export async function acknowledgeSecurityAlert(id:string){return api<any>(`/v1/security/alerts/${encodeURIComponent(id)}/ack`,{method:'POST'});}
-export async function getNotifications(limit=30,before?:string,category='all'){return api<{notifications:Notification[];nextBefore:string|null}>(`/v1/notifications?limit=${Math.min(Math.max(limit,1),100)}&category=${encodeURIComponent(category)}${before?`&before=${encodeURIComponent(before)}`:''}`);}
-export async function markAllNotificationsRead(){return api<any>('/v1/notifications/read-all',{method:'POST'});}
-export async function markNotificationRead(id:string){return api<any>(`/v1/notifications/${encodeURIComponent(id)}/read`,{method:'POST'});}
-export async function getNotificationPreferences(){return api<{preferences:NotificationPreferences}>('/v1/notifications/preferences');}
-export async function updateNotificationPreferences(input:Record<string,unknown>){return api<{preferences:NotificationPreferences}>('/v1/notifications/preferences',{method:'PUT',body:JSON.stringify(input)});}
-export async function getNotificationDigest(){return api<{enabled:boolean;frequency?:string;items:any[]}>('/v1/notifications/digest');}
-export async function getQuietPeriod(){return api<{active:boolean;startMinute?:number;endMinute?:number;timezone?:string}>('/v1/notifications/quiet-state');}
-export async function getNotificationUnreadCount(){return api<{count:number}>('/v1/notifications/unread-count');}
-export async function getSellerProducts(){return api<{products:SellerProduct[]}>('/v1/shop/products');}
-export async function createSellerProduct(input:any){return api('/v1/shop/products',{method:'POST',body:JSON.stringify(input)});
-}
-export async function getMarketCategories(){return api<{categories:any[]}>('/v1/market/categories');}
-export async function getMarketProducts(params:{q?:string;category?:string;sort?:string;limit?:number;offset?:number}={}){const qs=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v!==undefined)qs.set(k,String(v));});return api<{items:any[];nextOffset:number|null}>(`/v1/market/products?${qs.toString()}`);}
-export async function getMarketProductDetail(productId:string){return api<any>(`/v1/market/products/${encodeURIComponent(productId)}`);}
-export async function setProductWishlist(productId:string,saved:boolean){return api<{saved:boolean}>(`/v1/market/products/${encodeURIComponent(productId)}/wishlist`,{method:saved?'POST':'DELETE'});}
-export async function getSavedProducts(limit=50,before?:string){return api<{items:any[];nextBefore:string|null}>(`/v1/market/saved-products?limit=${limit}${before?`&before=${encodeURIComponent(before)}`:''}`);}
-export async function getRelatedProducts(productId:string,limit=12){return api<{items:any[]}>(`/v1/market/products/${encodeURIComponent(productId)}/related?limit=${limit}`);}
-export async function createProductReview(productId:string,input:any){return api(`/v1/market/products/${encodeURIComponent(productId)}/reviews`,{method:'POST',body:JSON.stringify(input)});}
-export async function askProductQuestion(productId:string,question:string){return api(`/v1/market/products/${encodeURIComponent(productId)}/questions`,{method:'POST',body:JSON.stringify({question})});}
-export async function answerProductQuestion(questionId:string,answer:string){return api(`/v1/market/questions/${encodeURIComponent(questionId)}/answers`,{method:'POST',body:JSON.stringify({answer})});}
+export async function getAccountExperience(){const r=await api<any>('/v1/account/experience');return r.preferences??r;}
+export async function updateAccountExperience(input:any){const r=await api<any>('/v1/account/experience',{method:'PUT',body:JSON.stringify(input)});return r.preferences??r;}
+export const getAccountExperiencePreferences=getAccountExperience;
+export const updateAccountExperiencePreferences=updateAccountExperience;
+export async function getAccountContacts(){return api<any>('/v1/account/contacts');}
+export async function updateAccountContacts(input:any){return api<any>('/v1/account/contacts',{method:'PUT',body:JSON.stringify(input)});}
+export async function getNotificationPreferences(){return api<any>('/v1/notifications/preferences');}
+export async function updateNotificationPreferences(input:any){return api<any>('/v1/notifications/preferences',{method:'PUT',body:JSON.stringify(input)});}
+export async function getSecurityAlerts(){return api<any>('/v1/security/alerts');}
+export async function getSecurityEvents(){return api<any>('/v1/security/events');}
+export async function secureAccount(){return api<any>('/v1/security/secure-account',{method:'POST'});}
+export async function getModerationNotices(){return api<any>('/v1/safety/notices');}
+export async function getSafetyCases(){return api<any>('/v1/safety/cases');}
+export async function addReportEvidence(reportId:string,input:{mediaId?:string;note?:string}){return api<any>(`/v1/safety/reports/${encodeURIComponent(reportId)}/evidence`,{method:'POST',body:JSON.stringify(input)});}
+export async function setRestricted(targetUserId:string,restricted:boolean){return api<any>('/v1/safety/restrict',{method:restricted?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
+export async function submitSafetyAppeal(caseId:string,text:string){return api<any>(`/v1/safety/cases/${encodeURIComponent(caseId)}/appeal`,{method:'POST',body:JSON.stringify({text})});}
+export async function getSafetyState(targetUserId:string){return api<any>(`/v1/safety/state?targetUserId=${encodeURIComponent(targetUserId)}`);}
+export async function setBlocked(targetUserId:string,blocked:boolean){return api('/v1/safety/block',{method:blocked?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
+export async function setMuted(targetUserId:string,muted:boolean){return api('/v1/safety/mute',{method:muted?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
+export async function reportTarget(target:any,reason:string,details=''){return api('/v1/safety/report',{method:'POST',body:JSON.stringify({target,reason,details})});}
+export async function getModerationCases(){return getSafetyCases();}
+export async function getSecurityAlertList(){return getSecurityAlerts();}
 export async function getAddresses(){return api<{addresses:any[]}>('/v1/market/addresses');}
 export async function saveAddress(input:any){return api('/v1/market/addresses',{method:'POST',body:JSON.stringify(input)});}
 export async function deleteAddress(id:string){return api(`/v1/market/addresses/${encodeURIComponent(id)}`,{method:'DELETE'});}
@@ -145,7 +133,11 @@ export async function prepareCheckout(key:string){return api<any>('/v1/checkout/
 export async function setCheckoutAddress(sessionId:string,addressId:string){return api<any>(`/v1/checkout/${encodeURIComponent(sessionId)}/address`,{method:'PUT',body:JSON.stringify({addressId})});}
 export async function setCheckoutDelivery(sessionId:string,input:{code:string;feeMinor:number;minDays?:number;maxDays?:number}){return api<any>(`/v1/checkout/${encodeURIComponent(sessionId)}/delivery`,{method:'PUT',body:JSON.stringify(input)});}
 export async function setCheckoutPaymentMethod(sessionId:string,method:string){return api<any>(`/v1/checkout/${encodeURIComponent(sessionId)}/payment-method`,{method:'PUT',body:JSON.stringify({method})});}
-export async function getSafetyState(targetUserId:string){return api<any>(`/v1/safety/state?targetUserId=${encodeURIComponent(targetUserId)}`);}
-export async function setBlocked(targetUserId:string,blocked:boolean){return api(`/v1/safety/block`,{method:blocked?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
-export async function setMuted(targetUserId:string,muted:boolean){return api(`/v1/safety/mute`,{method:muted?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
-export async function reportTarget(target:any,reason:string,details=''){return api('/v1/safety/report',{method:'POST',body:JSON.stringify({target,reason,details})});}
+export async function finalizeCheckout(sessionId:string){return api<any>(`/v1/checkout/${encodeURIComponent(sessionId)}/finalize`,{method:'POST'});}
+export async function getMarketCategories(){return api<any>('/v1/market/categories');}
+export async function getMarketProducts(params:any={}){const q=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v!==undefined&&v!==null&&v!=='')q.set(k,String(v));});return api<any>(`/v1/market/products?${q.toString()}`);}
+export async function getSavedProducts(limit=50,before?:string){return api<any>(`/v1/market/saved-products?limit=${limit}${before?`&before=${encodeURIComponent(before)}`:''}`);}
+export async function setProductWishlist(productId:string,saved:boolean){return api<any>(`/v1/market/products/${encodeURIComponent(productId)}/wishlist`,{method:saved?'POST':'DELETE'});}
+export async function createProductReview(productId:string,input:any){return api<any>(`/v1/market/products/${encodeURIComponent(productId)}/reviews`,{method:'POST',body:JSON.stringify(input)});}
+export async function askProductQuestion(productId:string,question:string){return api<any>(`/v1/market/products/${encodeURIComponent(productId)}/questions`,{method:'POST',body:JSON.stringify({question})});}
+export async function answerProductQuestion(questionId:string,answer:string){return api<any>(`/v1/market/questions/${encodeURIComponent(questionId)}/answers`,{method:'POST',body:JSON.stringify({answer})});}
