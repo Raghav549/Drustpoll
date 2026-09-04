@@ -1,0 +1,2 @@
+UPDATE notifications SET category=CASE WHEN type IN ('mention','comment') THEN 'mentions_replies' WHEN type IN ('follow','follow_request') THEN 'follows' WHEN type='order_update' THEN 'commerce_orders' WHEN type='security' THEN 'security' WHEN type='system' THEN 'system' ELSE 'social' END WHERE category='system';
+CREATE INDEX IF NOT EXISTS notifications_category_idx ON notifications(recipient_id,category,created_at DESC);
