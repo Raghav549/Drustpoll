@@ -21,12 +21,12 @@ export async function getFeedPreferences(){return api<{mode:'for_you'|'following
 export async function setFeedPreferences(input:{mode?:'for_you'|'following'|'latest';topic?:string|null}){return api<{mode:'for_you'|'following'|'latest';topic:string|null;updated_at:string}>('/v1/feed/preferences',{method:'PUT',body:JSON.stringify(input)});}
 export async function resetFeed(){return api<{ok:boolean;resetAt:string}>('/v1/feed/reset',{method:'POST'});}
 export async function getFeedTopics(){return api<{topics:Array<{topic:string;count:number}>}>('/v1/feed/topics');}
-export async function getReels(){return api<{items:Array<any>}>(`/v1/reels/recommended`);}
-export async function startReelWatchSession(clientSessionId:string){return api<{sessionId:string}>(`/v1/reels/watch-sessions`,{method:'POST',body:JSON.stringify({clientSessionId})});}
+export async function getReels(){return api<{items:Array<any>}>('/v1/reels/recommended');}
+export async function startReelWatchSession(clientSessionId:string){return api<{sessionId:string}>('/v1/reels/watch-sessions',{method:'POST',body:JSON.stringify({clientSessionId})});}
 export async function recordReelWatchEvents(sessionId:string,events:Array<any>){return api<{accepted:number;acceptedClientEventIds:string[]}>(`/v1/reels/watch-events`,{method:'POST',body:JSON.stringify({sessionId,events})});}
 export async function endReelWatchSession(sessionId:string){return api(`/v1/reels/watch-sessions/${encodeURIComponent(sessionId)}`,{method:'DELETE'});}
-export async function getReelPreferences(){return api<{preferences:any}>(`/v1/reels/preferences`);}
-export async function updateReelPreferences(input:Record<string,unknown>){return api(`/v1/reels/preferences`,{method:'PUT',body:JSON.stringify(input)});}
+export async function getReelPreferences(){return api<{preferences:any}>('/v1/reels/preferences');}
+export async function updateReelPreferences(input:Record<string,unknown>){return api('/v1/reels/preferences',{method:'PUT',body:JSON.stringify(input)});}
 export async function reelCreatorFeedback(creatorId:string,signal:'hide'|'mute'|'not_interested'|'report'){return api(`/v1/reels/creators/${encodeURIComponent(creatorId)}/feedback`,{method:'POST',body:JSON.stringify({signal})});}
 export async function getReelAudio(q=''){return api<{audio:any[]}>(`/v1/reels/audio?q=${encodeURIComponent(q)}`);}
 export async function getRelatedReels(postId:string){return api<{items:any[]}>(`/v1/reels/related?postId=${encodeURIComponent(postId)}`);}
@@ -42,17 +42,17 @@ export async function deleteSavedSearch(id:string){return api(`/v1/discovery/sav
 export async function getDiscoveryCategories(){return api<{categories:any[]}>('/v1/discovery/categories');}
 export async function getDiscoveryPreferences(){return api<{preferences:any}>('/v1/discovery/preferences');}
 export async function updateDiscoveryPreferences(input:Record<string,unknown>){return api('/v1/discovery/preferences',{method:'PUT',body:JSON.stringify(input)});}
-export async function getShopRecommendations(){return api<{items:any[]}>(`/v1/shop/recommended`);}
+export async function getShopRecommendations(){return api<{items:any[]}>('/v1/shop/recommended');}
 export async function getProduct(productId:string){return api<{product:any|null}>(`/v1/shop/products/${encodeURIComponent(productId)}`);}
 export async function recordCommerceEvent(input:any){return api('/v1/shop/events',{method:'POST',body:JSON.stringify(input)});}
-export async function getCart(){return api<{id:string|null;items:any[]}>(`/v1/cart`);}
-export async function addCartItem(productId:string,quantity:number){return api(`/v1/cart/items`,{method:'POST',body:JSON.stringify({productId,quantity})});}
-export async function updateCartItem(productId:string,quantity:number){return api<{id:string|null;items:any[]}>(`/v1/cart/items`,{method:'PATCH',body:JSON.stringify({productId,quantity})});}
+export async function getCart(){return api<{id:string|null;items:any[]}>('/v1/cart');}
+export async function addCartItem(productId:string,quantity:number){return api('/v1/cart/items',{method:'POST',body:JSON.stringify({productId,quantity})});}
+export async function updateCartItem(productId:string,quantity:number){return api<{id:string|null;items:any[]}>('/v1/cart/items',{method:'PATCH',body:JSON.stringify({productId,quantity})});}
 export type Order={orderId:string;sellerId:string;totalMinor:number;currency:string;status:string;createdAt:string;updatedAt:string;items:any[]};
 export async function getOrders(limit=30,before?:string){return api<{orders:Order[];nextBefore:string|null}>(`/v1/orders?limit=${Math.min(Math.max(limit,1),50)}${before?`&before=${encodeURIComponent(before)}`:''}`);}
 export async function getOrder(orderId:string){return api<{order:Order|null}>(`/v1/orders/${encodeURIComponent(orderId)}`);}
 export async function cancelOrder(orderId:string){return api<{orderId:string;status:string}>(`/v1/orders/${encodeURIComponent(orderId)}/cancel`,{method:'POST'});}
-export async function checkout(idempotencyKey:string){return api<{orders:any[]}>(`/v1/orders`,{method:'POST',body:JSON.stringify({idempotencyKey})});}
+export async function checkout(idempotencyKey:string){return api<{orders:any[]}>('/v1/orders',{method:'POST',body:JSON.stringify({idempotencyKey})});}
 export async function createPost(input:any){return api<{id:string;createdAt:string}>('/v1/posts',{method:'POST',body:JSON.stringify(input)});}
 export async function getMyProfile(){return api<{profile:any|null}>('/v1/social/me/profile');}
 export type ProfileSurface={user_id:string;username:string;display_name:string;bio:string;avatar_url:string|null;website_url:string|null;profile_visibility:string;activity_visibility:string;discoverability:string;follower_count:number;following_count:number;post_count:number;video_count:number;following:boolean;requested:boolean;relationship_state:string|null;verified:boolean;verification_label:string;creator_category:string|null;creator_bio:string|null;seller_status:string|null;shop_id:string|null;shop_name:string|null;city:string|null;region:string|null;country_code:string|null;location_precision:string|null;location_discoverable:boolean};
@@ -119,6 +119,12 @@ export async function setStorefrontMetadata(shopId:string,input:any){return api(
 export async function getShopDiscovery(limit=30){return api<{shops:any[]}>(`/v1/market/shops?limit=${limit}`);}
 export async function getShopCollections(shopId:string){return api<{collections:any[]}>(`/v1/market/shops/${encodeURIComponent(shopId)}/collections`);}
 export async function createShopCollection(shopId:string,input:any){return api(`/v1/market/shops/${encodeURIComponent(shopId)}/collections`,{method:'POST',body:JSON.stringify(input)});}
+export async function getCommerceProduct(productId:string){return api<any>(`/v1/commerce/products/${encodeURIComponent(productId)}`);}
+export async function setSavedForLater(productId:string,quantity:number,saved:boolean){return api<{saved:boolean}>(`/v1/commerce/products/${encodeURIComponent(productId)}/saved-for-later`,{method:saved?'POST':'DELETE',body:JSON.stringify({quantity})});}
+export async function getSavedForLater(){return api<{items:any[]}>('/v1/commerce/saved-for-later');}
+export async function getAdvancedOrder(orderId:string){return api<any>(`/v1/commerce/orders/${encodeURIComponent(orderId)}`);}
+export async function reportOrderIssue(orderId:string,issueType:string,details=''){return api(`/v1/commerce/orders/${encodeURIComponent(orderId)}/issues`,{method:'POST',body:JSON.stringify({issueType,details})});}
+export async function requestExchange(orderId:string,productId:string,notes=''){return api(`/v1/commerce/orders/${encodeURIComponent(orderId)}/exchange`,{method:'POST',body:JSON.stringify({productId,notes})});}
 export async function getSafetyState(targetUserId:string){return api<any>(`/v1/safety/state?targetUserId=${encodeURIComponent(targetUserId)}`);}
 export async function setBlocked(targetUserId:string,blocked:boolean){return api(`/v1/safety/block`,{method:blocked?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
 export async function setMuted(targetUserId:string,muted:boolean){return api(`/v1/safety/mute`,{method:muted?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
