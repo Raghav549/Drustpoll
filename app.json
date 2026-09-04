@@ -5,11 +5,12 @@
     "version": "0.1.0",
     "scheme": "drustpoll",
     "orientation": "default",
-    "userInterfaceStyle": "light",
-    "web": { "bundler": "metro", "output": "static" },
-    "plugins": ["expo-router"],
+    "userInterfaceStyle": "automatic",
+    "web": { "bundler": "metro", "output": "static", "favicon": "./assets/drustpoll-mark.svg" },
+    "plugins": ["expo-router", "expo-splash-screen"],
     "experiments": { "typedRoutes": true },
     "ios": { "supportsTablet": true },
-    "android": { "adaptiveIcon": { "backgroundColor": "#F6F7F9" } }
+    "android": { "adaptiveIcon": { "backgroundColor": "#F5F6F2", "foregroundImage": "./assets/drustpoll-mark.svg" } },
+    "splash": { "image": "./assets/drustpoll-mark.svg", "resizeMode": "contain", "backgroundColor": "#F5F6F2" }
   }
 }
