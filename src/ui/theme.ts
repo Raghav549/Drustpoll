@@ -9,5 +9,14 @@ export const spacing={xxs:4,xs:8,sm:12,md:16,lg:20,xl:28,xxl:36,huge:52} as cons
 export const motion={instant:80,quick:160,standard:240,emphasis:360} as const;
 export const touch={minimum:44,comfortable:48} as const;
 export const breakpoints={compact:360,phone:768,tablet:1100} as const;
-export const elevation={none:{},low:{shadowColor:'#162019',shadowOpacity:.05,shadowRadius:10,shadowOffset:{width:0,height:3},elevation:2},medium:{shadowColor:'#162019',shadowOpacity:.09,shadowRadius:18,shadowOffset:{width:0,height:7},elevation:5}} as const;
+export const elevation={none:{},low:{shadowColor:'#162019',shadowOpacity:.05,shadowRadius:10,shadowOffset:{width:0,height:3},elevation:2},medium:{shadowColor:'#162019',shadowOpacity:.09,shadowRadius:18,shadowOffset:{width:0,height:7},elevation:5} } as const;
 export type ThemeMode='system'|'light'|'dark'|'high_contrast';
+export type InteractionState='idle'|'focused'|'pressed'|'pending'|'success'|'error'|'recovered'|'disabled'|'selected'|'unavailable'|'offline'|'private'|'blocked'|'muted'|'deleted'|'moderated'|'expired';
+export const psychology={
+  contentWidth:{reading:680,standard:900,wide:1200},
+  rhythm:{sectionGap:20,cardGap:12,controlGap:8},
+  motion:{enter:motion.standard,feedback:motion.quick,emphasis:motion.emphasis},
+  trust:{minTouch:touch.minimum,clearCommit:true,reversibleByDefault:true,visibleSystemState:true},
+  ranking:{relevance:true,novelty:true,diversity:true,fairness:true,freshness:true,relationship:true,userControl:true},
+  commerce:{priceBeforeCommit:true,inventoryBeforeCommit:true,deliveryBeforeCommit:true,paymentSeparate:true}
+} as const;
