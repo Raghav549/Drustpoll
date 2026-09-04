@@ -19,5 +19,6 @@ export async function updateAccountExperiencePreferences(userId:string,input:Rec
   const currency=clean(input.currency??current.currency,3).toUpperCase()||'INR';
   const bool=(key:BoolKey):boolean=>{const value=input[key];return value===undefined?current[key]:value===true;};
   const r=await query<ExperiencePrefs>(`INSERT INTO account_experience_preferences(user_id,appearance,language,region,currency,reduced_motion,data_saver,large_text) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(user_id) DO UPDATE SET appearance=EXCLUDED.appearance,language=EXCLUDED.language,region=EXCLUDED.region,currency=EXCLUDED.currency,reduced_motion=EXCLUDED.reduced_motion,data_saver=EXCLUDED.data_saver,large_text=EXCLUDED.large_text,updated_at=now() RETURNING appearance,language,region,currency,reduced_motion,data_saver,large_text`,[userId,appearance,language,region,currency,bool('reduced_motion'),bool('data_saver'),bool('large_text')]);
+  await query(`INSERT INTO privacy_control_history(user_id,control,value) VALUES($1,'experience',$2)`,[userId,JSON.stringify({appearance,language,region,currency,reduced_motion:bool('reduced_motion'),data_saver:bool('data_saver'),large_text:bool('large_text')})]);
   return r.rows[0];
 }
