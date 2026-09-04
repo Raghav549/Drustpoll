@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS profile_creator_info (
 
 CREATE TABLE IF NOT EXISTS profile_seller_info (
   user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  shop_id uuid,
+  shop_id uuid REFERENCES shops(id) ON DELETE SET NULL,
   seller_status text NOT NULL DEFAULT 'inactive' CHECK(seller_status IN ('inactive','pending','active','suspended')),
   support_url text,
   return_policy text,
@@ -62,3 +62,4 @@ CREATE TABLE IF NOT EXISTS profile_seller_info (
 CREATE INDEX IF NOT EXISTS profile_collection_items_post_idx ON profile_collection_items(post_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS profile_tagged_user_time_idx ON profile_tagged_posts(tagged_user_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS profile_locations_discoverable_idx ON profile_locations(country_code,region,city) WHERE discoverable=true;
+CREATE INDEX IF NOT EXISTS profile_collections_user_visibility_idx ON profile_collections(user_id,visibility,created_at DESC);
