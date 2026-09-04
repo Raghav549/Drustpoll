@@ -74,17 +74,38 @@ export async function markConversationRead(id:string){return api<{updated:number
 export async function getMessages(id:string,limit=50,before?:string){return api<{messages:any[];nextBefore:string|null}>(`/v1/messages/conversations/${encodeURIComponent(id)}/messages?limit=${Math.min(Math.max(limit,1),100)}${before?`&before=${encodeURIComponent(before)}`:''}`);}
 export async function sendEncryptedMessage(id:string,ciphertext:string,keyVersion=1,deviceId?:string){return api<{id:string;createdAt:string}>(`/v1/messages/conversations/${encodeURIComponent(id)}/messages`,{method:'POST',body:JSON.stringify({ciphertext,keyVersion,deviceId})});}
 export async function getDeviceKeys(userId:string){return api<{bundles:any[]}>(`/v1/messages/devices/${encodeURIComponent(userId)}`);}
+export type Notification={id:string;actor_id:string|null;type:string;object_id:string|null;grouped_key:string|null;metadata:Record<string,unknown>;category?:string;read_at:string|null;created_at:string;actor_username?:string|null;actor_display_name?:string|null;actor_avatar_url?:string|null};
+export type NotificationPreferences={social:boolean;mentions_replies:boolean;follows:boolean;commerce_orders:boolean;security:boolean;system:boolean;digest_enabled:boolean;digest_frequency:'daily'|'weekly';quiet_enabled:boolean;quiet_start_minute:number;quiet_end_minute:number;quiet_timezone:string;updated_at:string|null};
 export async function getPrivacy(){return api<any>('/v1/privacy');}
 export async function updatePrivacy(input:any){return api<any>('/v1/privacy',{method:'PUT',body:JSON.stringify(input)});}
-export async function getNotifications(limit=30,before?:string){return api<any>(`/v1/notifications?limit=${Math.min(Math.max(limit,1),100)}${before?`&before=${encodeURIComponent(before)}`:''}`);}
+export async function getNotifications(limit=30,before?:string,category='all'){return api<{notifications:Notification[];nextBefore:string|null}>(`/v1/notifications?limit=${Math.min(Math.max(limit,1),100)}&category=${encodeURIComponent(category)}${before?`&before=${encodeURIComponent(before)}`:''}`);}
 export async function markAllNotificationsRead(){return api<any>('/v1/notifications/read-all',{method:'POST'});}
 export async function markNotificationRead(id:string){return api<any>(`/v1/notifications/${encodeURIComponent(id)}/read`,{method:'POST'});}
+export async function getNotificationPreferences(){return api<{preferences:NotificationPreferences}>('/v1/notifications/preferences');}
+export async function updateNotificationPreferences(input:Record<string,unknown>){return api<{preferences:NotificationPreferences}>('/v1/notifications/preferences',{method:'PUT',body:JSON.stringify(input)});}
+export async function getNotificationDigest(){return api<{enabled:boolean;frequency?:string;items:any[]}>('/v1/notifications/digest');}
+export async function getQuietPeriod(){return api<{active:boolean;startMinute?:number;endMinute?:number;timezone?:string}>('/v1/notifications/quiet-state');}
+export async function getNotificationUnreadCount(){return api<{count:number}>('/v1/notifications/unread-count');}
+export async function getSellerProducts(){return api<{products:any[]}>('/v1/shop/products');}
+export async function createSellerProduct(input:any){return api('/v1/shop/products',{method:'POST',body:JSON.stringify(input)});}
+export async function getMarketCategories(){return api<{categories:any[]}>('/v1/market/categories');}
+export async function getMarketProducts(params:{q?:string;category?:string;sort?:string;limit?:number;offset?:number}={}){const qs=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v!==undefined)qs.set(k,String(v));});return api<{items:any[];nextOffset:number|null}>(`/v1/market/products?${qs.toString()}`);}
+export async function getMarketProductDetail(productId:string){return api<any>(`/v1/market/products/${encodeURIComponent(productId)}`);}
+export async function setProductWishlist(productId:string,saved:boolean){return api<{saved:boolean}>(`/v1/market/products/${encodeURIComponent(productId)}/wishlist`,{method:saved?'POST':'DELETE'});}
+export async function getSavedProducts(limit=50,before?:string){return api<{items:any[];nextBefore:string|null}>(`/v1/market/saved-products?limit=${limit}${before?`&before=${encodeURIComponent(before)}`:''}`);}
+export async function getRelatedProducts(productId:string,limit=12){return api<{items:any[]}>(`/v1/market/products/${encodeURIComponent(productId)}/related?limit=${limit}`);}
+export async function createProductReview(productId:string,input:any){return api(`/v1/market/products/${encodeURIComponent(productId)}/reviews`,{method:'POST',body:JSON.stringify(input)});}
+export async function askProductQuestion(productId:string,question:string){return api(`/v1/market/products/${encodeURIComponent(productId)}/questions`,{method:'POST',body:JSON.stringify({question})});}
+export async function answerProductQuestion(questionId:string,answer:string){return api(`/v1/market/questions/${encodeURIComponent(questionId)}/answers`,{method:'POST',body:JSON.stringify({answer})});}
+export async function getAddresses(){return api<{addresses:any[]}>('/v1/market/addresses');}
+export async function saveAddress(input:any){return api('/v1/market/addresses',{method:'POST',body:JSON.stringify(input)});}
+export async function deleteAddress(id:string){return api(`/v1/market/addresses/${encodeURIComponent(id)}`,{method:'DELETE'});}
+export async function getDeliveryEstimate(productId:string,addressId?:string){return api<any>(`/v1/market/products/${encodeURIComponent(productId)}/delivery${addressId?`?addressId=${encodeURIComponent(addressId)}`:''}`);}
+export async function requestReturn(orderId:string,reason:string,notes=''){return api(`/v1/market/orders/${encodeURIComponent(orderId)}/returns`,{method:'POST',body:JSON.stringify({reason,notes})});}
+export async function getReturns(orderId?:string){return api<{returns:any[]}>(`/v1/market/returns${orderId?`?orderId=${encodeURIComponent(orderId)}`:''}`);}
+export async function openOrderSupport(orderId:string,subject:string){return api(`/v1/market/orders/${encodeURIComponent(orderId)}/support`,{method:'POST',body:JSON.stringify({subject})});}
+export async function setShippingProfile(productId:string,input:any){return api(`/v1/market/products/${encodeURIComponent(productId)}/shipping`,{method:'PUT',body:JSON.stringify(input)});}
 export async function getSafetyState(targetUserId:string){return api<any>(`/v1/safety/state?targetUserId=${encodeURIComponent(targetUserId)}`);}
 export async function setBlocked(targetUserId:string,blocked:boolean){return api(`/v1/safety/block`,{method:blocked?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
 export async function setMuted(targetUserId:string,muted:boolean){return api(`/v1/safety/mute`,{method:muted?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
 export async function reportTarget(target:any,reason:string,details=''){return api('/v1/safety/report',{method:'POST',body:JSON.stringify({target,reason,details})});}
-export async function getSellerProducts(){return api<{products:any[]}>('/v1/shop/products');}
-export async function createSellerProduct(input:any){return api('/v1/shop/products',{method:'POST',body:JSON.stringify(input)});}
-export async function getSessions(){return api<{sessions:any[]}>('/v1/auth/sessions');}
-export async function revokeSession(id:string){return api(`/v1/auth/sessions/${encodeURIComponent(id)}/revoke`,{method:'POST'});}
-export async function revokeAllSessions(){return api('/v1/auth/sessions/revoke-all',{method:'POST'});}
