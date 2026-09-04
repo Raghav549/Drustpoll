@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Link, useLocalSearchParams } from 'expo-router';
+import { AppShell } from '../src/ui/AppShell';
 import { cancelOrder, getOrder, type Order } from '../src/api/client';
 import { colors, radius, spacing, type } from '../src/ui/theme';
 const statusLabel=(value:string)=>value.replace(/_/g,' ');
