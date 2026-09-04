@@ -22,6 +22,7 @@ import { recordUiMeasurements } from './measurement-service.js';
 import { createRepost, getCommentReplies, getFeedPreferences, getPoll, getPostComments, listFeedTopics, listHiddenTopics, recordRecommendationFeedback, removeRecommendationFeedback, resetFeed, setFeedPreferences, setHiddenTopic, votePoll } from './social-surface-service.js';
 import { getDiscoveryPreferences, listDiscoveryCategories, listRecentSearches, listSavedSearches, saveSearch, deleteSavedSearch, clearRecentSearches, recordSearch, updateDiscoveryPreferences, getDiscoveryResults, getDiscoveryFeed } from './discovery-surface-service.js';
 import { getReelAudio, getReelPreferences, getRelatedReels, setReelCreatorFeedback, updateReelPreferences } from './reel-surface-service.js';
+import { getProfileSurface, getMutualContext, listFollowers, listFollowing, listProfilePosts, listProfileVideos, listTaggedPosts, listSavedPosts, listCollections, getCollection, getShopSummary, getSellerSummary, updateProfileExtras } from './profile-surface-service.js';
 const json=(res:ServerResponse,status:number,body:unknown)=>{securityHeaders(res);res.statusCode=status;res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(JSON.stringify(body));};
 async function body(req:IncomingMessage):Promise<any>{let data='';for await(const chunk of req){data+=chunk;if(Buffer.byteLength(data)>256*1024)throw new Error('Request too large');}return data?JSON.parse(data):{};}
 function bearer(req:IncomingMessage){const v=req.headers.authorization;return v?.startsWith('Bearer ')?v.slice(7):null;}
@@ -88,7 +89,7 @@ const server=createServer(async(req,res)=>{try{
  const poll=url.pathname.match(/^\/v1\/posts\/([^/]+)\/poll$/);if(req.method==='GET'&&poll)return json(res,200,{poll:await getPoll(session.userId,poll[1])});if(req.method==='POST'&&poll){const i=await body(req);return json(res,200,await votePoll(session.userId,poll[1],String(i.optionId??'')));}
  const rp=url.pathname.match(/^\/v1\/posts\/([^/]+)\/repost$/);if(req.method==='POST'&&rp){const i=await body(req);return json(res,200,await createRepost(session.userId,rp[1],String(i.quote??'')));}
  const pf=url.pathname.match(/^\/v1\/posts\/([^/]+)\/feedback$/);if(req.method==='POST'&&pf){const i=await body(req);return json(res,202,await recordRecommendationFeedback(session.userId,'post',pf[1],i.signal,String(i.context??'feed')));}if(req.method==='DELETE'&&pf){const i=await body(req);return json(res,200,await removeRecommendationFeedback(session.userId,'post',pf[1],i.signal,String(i.context??'feed')));}
- if(req.method==='GET'&&url.pathname==='/v1/feed') {const m=url.searchParams.get('mode')??'for_you';if(m==='latest')return json(res,200,await getFeed(session.userId,'for_you',Number(url.searchParams.get('limit')??30),url.searchParams.get('before')??undefined));return json(res,200,await getFeed(session.userId,m==='following'?'following':'for_you',Number(url.searchParams.get('limit')??30),url.searchParams.get('before')??undefined));}
+ if(req.method==='GET'&&url.pathname==='/v1/feed'){const m=url.searchParams.get('mode')??'for_you';if(m==='latest')return json(res,200,await getFeed(session.userId,'for_you',Number(url.searchParams.get('limit')??30),url.searchParams.get('before')??undefined));return json(res,200,await getFeed(session.userId,m==='following'?'following':'for_you',Number(url.searchParams.get('limit')??30),url.searchParams.get('before')??undefined));}
  if(req.method==='GET'&&url.pathname==='/v1/feed/topics')return json(res,200,{topics:await listFeedTopics(session.userId)});
  if(req.method==='GET'&&url.pathname==='/v1/feed/preferences')return json(res,200,await getFeedPreferences(session.userId));
  if(req.method==='PUT'&&url.pathname==='/v1/feed/preferences')return json(res,200,await setFeedPreferences(session.userId,await body(req)));
@@ -96,40 +97,53 @@ const server=createServer(async(req,res)=>{try{
  if(req.method==='GET'&&url.pathname==='/v1/feed/hidden-topics')return json(res,200,{topics:await listHiddenTopics(session.userId)});
  if(req.method==='POST'&&url.pathname==='/v1/feed/hidden-topics'){const i=await body(req);return json(res,200,await setHiddenTopic(session.userId,String(i.topic??''),true));}
  if(req.method==='DELETE'&&url.pathname==='/v1/feed/hidden-topics'){const i=await body(req);return json(res,200,await setHiddenTopic(session.userId,String(i.topic??''),false));}
+ const sp=url.pathname.match(/^\/v1\/profiles\/([^/]+)$/);if(req.method==='GET'&&sp)return json(res,200,{profile:await getProfileSurface(session.userId,sp[1])});
+ if(req.method==='GET'&&url.pathname==='/v1/profiles/me')return json(res,200,{profile:await getProfileSurface(session.userId,session.userId)});
+ const mut=url.pathname.match(/^\/v1\/profiles\/([^/]+)\/mutuals$/);if(req.method==='GET'&&mut)return json(res,200,await getMutualContext(session.userId,mut[1]));
+ const followers=url.pathname.match(/^\/v1\/profiles\/([^/]+)\/followers$/);if(req.method==='GET'&&followers)return json(res,200,await listFollowers(session.userId,followers[1],Number(url.searchParams.get('limit')??50),url.searchParams.get('before')??undefined));
+ const following=url.pathname.match(/^\/v1\/profiles\/([^/]+)\/following$/);if(req.method==='GET'&&following)return json(res,200,await listFollowing(session.userId,following[1],Number(url.searchParams.get('limit')??50),url.searchParams.get('before')??undefined));
+ const posts=url.pathname.match(/^\/v1\/profiles\/([^/]+)\/posts$/);if(req.method==='GET'&&posts)return json(res,200,await listProfilePosts(session.userId,posts[1],Number(url.searchParams.get('limit')??30),url.searchParams.get('before')??undefined));
+ const videos=url.pathname.match(/^\/v1\/profiles\/([^/]+)\/videos$/);if(req.method==='GET'&&videos)return json(res,200,await listProfileVideos(session.userId,videos[1],Number(url.searchParams.get('limit')??30),url.searchParams.get('before')??undefined));
+ const tagged=url.pathname.match(/^\/v1\/profiles\/([^/]+)\/tagged$/);if(req.method==='GET'&&tagged)return json(res,200,await listTaggedPosts(session.userId,tagged[1],Number(url.searchParams.get('limit')??30),url.searchParams.get('before')??undefined));
+ if(req.method==='GET'&&url.pathname==='/v1/profiles/me/saved')return json(res,200,await listSavedPosts(session.userId,Number(url.searchParams.get('limit')??30),url.searchParams.get('before')??undefined));
+ const collections=url.pathname.match(/^\/v1\/profiles\/([^/]+)\/collections$/);if(req.method==='GET'&&collections)return json(res,200,await listCollections(session.userId,collections[1]));
+ const collection=url.pathname.match(/^\/v1\/profile-collections\/([^/]+)$/);if(req.method==='GET'&&collection)return json(res,200,await getCollection(session.userId,collection[1],Number(url.searchParams.get('limit')??30),url.searchParams.get('before')??undefined));
+ const shop=url.pathname.match(/^\/v1\/profiles\/([^/]+)\/shop$/);if(req.method==='GET'&&shop)return json(res,200,{shop:await getShopSummary(session.userId,shop[1])});
+ const seller=url.pathname.match(/^\/v1\/profiles\/([^/]+)\/seller$/);if(req.method==='GET'&&seller)return json(res,200,{seller:await getSellerSummary(session.userId,seller[1])});
+ if(req.method==='PUT'&&url.pathname==='/v1/profiles/me/extras')return json(res,200,await updateProfileExtras(session.userId,await body(req)));
+ if(req.method==='POST'&&url.pathname==='/v1/social/follow'){const i=await body(req);return json(res,200,await follow(session.userId,String(i.targetUserId??'')));}
+ if(req.method==='DELETE'&&url.pathname==='/v1/social/follow'){const i=await body(req);return json(res,200,await unfollow(session.userId,String(i.targetUserId??'')));}
+ if(req.method==='POST'&&url.pathname==='/v1/social/relationship'){const i=await body(req);return json(res,200,await setFollowState(session.userId,String(i.targetUserId??''),i.state));}
+ if(req.method==='GET'&&url.pathname==='/v1/social/me/profile')return json(res,200,{profile:await getProfile(session.userId)});
+ const pm=url.pathname.match(/^\/v1\/social\/profiles\/([^/]+)$/);if(req.method==='GET'&&pm)return json(res,200,{profile:await getProfile(pm[1])});
+ const comments=url.pathname.match(/^\/v1\/posts\/([^/]+)\/comments$/);if(req.method==='POST'&&comments){const i=await body(req);return json(res,201,await addComment(session.userId,comments[1],String(i.body??''),i.parentId?String(i.parentId):undefined));}
+ const reac=url.pathname.match(/^\/v1\/posts\/([^/]+)\/reaction$/);if(req.method==='POST'&&reac)return json(res,200,await toggleReaction(session.userId,reac[1]));
+ const save=url.pathname.match(/^\/v1\/posts\/([^/]+)\/save$/);if(req.method==='POST'&&save)return json(res,200,await toggleSave(session.userId,save[1]));
+ if(req.method==='POST'&&url.pathname==='/v1/posts'){return json(res,201,await createPost(session.userId,await body(req)));}
+ if(req.method==='GET'&&url.pathname==='/v1/shop/recommended')return json(res,200,{items:await getRecommendedProducts(session.userId,Number(url.searchParams.get('limit')??24))});
+ if(req.method==='GET'&&url.pathname==='/v1/shop/products')return json(res,200,{products:await listSellerProducts(session.userId)});
+ if(req.method==='POST'&&url.pathname==='/v1/shop/products'){return json(res,201,await createProduct(session.userId,await body(req)));}
+ const prod=url.pathname.match(/^\/v1\/shop\/products\/([^/]+)$/);if(req.method==='GET'&&prod)return json(res,200,{product:await getProduct(session.userId,prod[1])});
+ if(req.method==='POST'&&url.pathname==='/v1/shop/events'){return json(res,202,await recordCommerceEvent(session.userId,await body(req)));}
+ if(req.method==='GET'&&url.pathname==='/v1/cart')return json(res,200,await getCart(session.userId));
+ if(req.method==='POST'&&url.pathname==='/v1/cart/items'){const i=await body(req);return json(res,200,await addCartItem(session.userId,String(i.productId??''),Number(i.quantity??0)));}
+ if(req.method==='PATCH'&&url.pathname==='/v1/cart/items'){const i=await body(req);return json(res,200,await updateCartItem(session.userId,String(i.productId??''),Number(i.quantity??0)));}
+ if(req.method==='POST'&&url.pathname==='/v1/orders')return json(res,201,await placeOrder(session.userId,String((await body(req)).idempotencyKey??'')));
+ if(req.method==='GET'&&url.pathname==='/v1/orders')return json(res,200,await listBuyerOrders(session.userId,Number(url.searchParams.get('limit')??30),url.searchParams.get('before')??undefined));
+ const or=url.pathname.match(/^\/v1\/orders\/([^/]+)$/);if(req.method==='GET'&&or)return json(res,200,{order:await getBuyerOrder(session.userId,or[1])});
+ const oc=url.pathname.match(/^\/v1\/orders\/([^/]+)\/cancel$/);if(req.method==='POST'&&oc)return json(res,200,await cancelPendingOrder(session.userId,oc[1]));
+ const cs=url.pathname.match(/^\/v1\/messages\/conversations\/([^/]+)\/messages$/);if(req.method==='GET'&&cs)return json(res,200,await listMessages(session.userId,cs[1],Number(url.searchParams.get('limit')??50),url.searchParams.get('before')??undefined));
  if(req.method==='GET'&&url.pathname==='/v1/messages/conversations')return json(res,200,await listConversations(session.userId,Number(url.searchParams.get('limit')??30)));
  if(req.method==='POST'&&url.pathname==='/v1/messages/conversations'){const i=await body(req);return json(res,201,await createConversation(session.userId,Array.isArray(i.participantIds)?i.participantIds.map(String):[]));}
- if(req.method==='POST'&&url.pathname==='/v1/messages/device-keys'){const i=await body(req);return json(res,200,await upsertDeviceKeyBundle(session.userId,{deviceId:String(i.deviceId??''),identityKey:String(i.identityKey??''),signedPreKey:String(i.signedPreKey??''),signedPreKeySignature:String(i.signedPreKeySignature??''),keyVersion:Number(i.keyVersion??1)}));}
- const dk=url.pathname.match(/^\/v1\/messages\/device-keys\/([^/]+)$/);if(req.method==='GET'&&dk)return json(res,200,await listDeviceKeyBundles(session.userId,dk[1]));
- const cv=url.pathname.match(/^\/v1\/messages\/conversations\/([^/]+)\/messages$/);if(cv){if(req.method==='GET')return json(res,200,await listMessages(session.userId,cv[1],Number(url.searchParams.get('limit')??50),url.searchParams.get('before')??undefined));if(req.method==='POST'){const i=await body(req);return json(res,201,await sendEncryptedMessage(session.userId,cv[1],String(i.ciphertext??''),Number(i.keyVersion??1),i.deviceId?String(i.deviceId):undefined));}}
  const rd=url.pathname.match(/^\/v1\/messages\/conversations\/([^/]+)\/read$/);if(req.method==='POST'&&rd)return json(res,200,await markConversationRead(session.userId,rd[1]));
+ const dk=url.pathname.match(/^\/v1\/messages\/device-keys\/([^/]+)$/);if(req.method==='GET'&&dk)return json(res,200,await listDeviceKeyBundles(session.userId,dk[1]));
+ if(req.method==='POST'&&url.pathname==='/v1/messages/device-keys'){const i=await body(req);return json(res,200,await upsertDeviceKeyBundle(session.userId,{deviceId:String(i.deviceId??''),identityKey:String(i.identityKey??''),signedPreKey:String(i.signedPreKey??''),signedPreKeySignature:String(i.signedPreKeySignature??''),keyVersion:Number(i.keyVersion??1)}));}
  if(req.method==='POST'&&url.pathname==='/v1/safety/block'){const i=await body(req);return json(res,200,await blockUser(session.userId,String(i.targetUserId??'')));}
  if(req.method==='DELETE'&&url.pathname==='/v1/safety/block'){const i=await body(req);return json(res,200,await unblockUser(session.userId,String(i.targetUserId??'')));}
  if(req.method==='POST'&&url.pathname==='/v1/safety/mute'){const i=await body(req);return json(res,200,await muteUser(session.userId,String(i.targetUserId??'')));}
  if(req.method==='DELETE'&&url.pathname==='/v1/safety/mute'){const i=await body(req);return json(res,200,await unmuteUser(session.userId,String(i.targetUserId??'')));}
  if(req.method==='GET'&&url.pathname==='/v1/safety/state'){const id=url.searchParams.get('targetUserId');if(!id)return json(res,400,{error:'targetUserId required'});return json(res,200,await getSafetyState(session.userId,id));}
  if(req.method==='POST'&&url.pathname==='/v1/safety/report'){const i=await body(req);return json(res,201,await reportContent(session.userId,i.target??{},String(i.reason??''),String(i.details??'')));}
- if(req.method==='GET'&&url.pathname==='/v1/social/me/profile')return json(res,200,{profile:await getProfile(session.userId)});
- const pmf=url.pathname.match(/^\/v1\/social\/profiles\/([^/]+)$/);if(req.method==='GET'&&pmf)return json(res,200,{profile:await getProfile(pmf[1])});
- if(req.method==='POST'&&url.pathname==='/v1/social/follow'){const i=await body(req);return json(res,200,await follow(session.userId,String(i.targetUserId??'')));}
- if(req.method==='DELETE'&&url.pathname==='/v1/social/follow'){const i=await body(req);return json(res,200,await unfollow(session.userId,String(i.targetUserId??'')));}
- if(req.method==='POST'&&url.pathname==='/v1/social/relationship'){const i=await body(req);return json(res,200,await setFollowState(session.userId,String(i.targetUserId??''),i.state));}
- if(req.method==='GET'&&url.pathname==='/v1/feed/recommended')return json(res,200,{items:await getRecommendedPosts(session.userId,Number(url.searchParams.get('limit')??20))});
- if(req.method==='POST'&&url.pathname==='/v1/feed/events'){const i=await body(req);return json(res,202,await recordFeedEvents(session.userId,Array.isArray(i.events)?i.events:[]));}
- if(req.method==='POST'&&url.pathname==='/v1/posts')return json(res,201,await createPost(session.userId,await body(req)));
- const rx=url.pathname.match(/^\/v1\/posts\/([^/]+)\/reaction$/);if(req.method==='POST'&&rx)return json(res,200,await toggleReaction(session.userId,rx[1]));
- const sv=url.pathname.match(/^\/v1\/posts\/([^/]+)\/save$/);if(req.method==='POST'&&sv)return json(res,200,await toggleSave(session.userId,sv[1]));
- const cp=url.pathname.match(/^\/v1\/posts\/([^/]+)\/comments$/);if(req.method==='POST'&&cp){const i=await body(req);return json(res,201,await addComment(session.userId,cp[1],String(i.body??''),i.parentId?String(i.parentId):undefined));}
- if(req.method==='GET'&&url.pathname==='/v1/shop/products')return json(res,200,{products:await listSellerProducts(url.searchParams.get('sellerId')??session.userId)});
- if(req.method==='POST'&&url.pathname==='/v1/shop/products')return json(res,201,await createProduct(session.userId,await body(req)));
- const pr=url.pathname.match(/^\/v1\/shop\/products\/([^/]+)$/);if(req.method==='GET'&&pr)return json(res,200,{product:await getProduct(pr[1])});
- if(req.method==='GET'&&url.pathname==='/v1/shop/recommended')return json(res,200,{items:await getRecommendedProducts(session.userId,Number(url.searchParams.get('limit')??20))});
- if(req.method==='POST'&&url.pathname==='/v1/shop/events'){const i=await body(req);return json(res,202,await recordCommerceEvent(session.userId,{productId:String(i.productId??''),eventType:i.eventType,dwellMs:i.dwellMs==null?undefined:Number(i.dwellMs),clientEventId:i.clientEventId?String(i.clientEventId):undefined}));}
- if(req.method==='GET'&&url.pathname==='/v1/cart')return json(res,200,await getCart(session.userId));
- if(req.method==='POST'&&url.pathname==='/v1/cart/items'){const i=await body(req);return json(res,200,await addCartItem(session.userId,String(i.productId??''),Number(i.quantity??0)));}
- if(req.method==='PATCH'&&url.pathname==='/v1/cart/items'){const i=await body(req);return json(res,200,await updateCartItem(session.userId,String(i.productId??''),Number(i.quantity??0)));}
- if(req.method==='POST'&&url.pathname==='/v1/orders'){const i=await body(req);return json(res,201,await placeOrder(session.userId,String(i.idempotencyKey??'')));}
- if(req.method==='GET'&&url.pathname==='/v1/orders')return json(res,200,await listBuyerOrders(session.userId,Number(url.searchParams.get('limit')??30),url.searchParams.get('before')??undefined));
- const od=url.pathname.match(/^\/v1\/orders\/([^/]+)$/);if(req.method==='GET'&&od)return json(res,200,{order:await getBuyerOrder(session.userId,od[1])});
- const oc=url.pathname.match(/^\/v1\/orders\/([^/]+)\/cancel$/);if(req.method==='POST'&&oc)return json(res,200,await cancelPendingOrder(session.userId,oc[1]));
- }}catch(error){const message=error instanceof Error?error.message:'Internal server error';const status=/unauthenticated/i.test(message)?401:/not found/i.test(message)?404:/invalid|too many|blocked|insufficient|closed|unavailable|empty|required/i.test(message)?400:500;return json(res,status,{error:message});}});
+ return json(res,404,{error:'Not found'});
+ }catch(error){console.error(error);return json(res,500,{error:error instanceof Error?error.message:'Internal server error'});}});
 server.listen(config.port,()=>console.log(`Drustpoll API listening on ${config.port}`));
