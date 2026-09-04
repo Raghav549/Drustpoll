@@ -1,0 +1,26 @@
+import { query, withTransaction } from './db.js';
+
+type Visibility='public'|'followers'|'private';
+type ContentType='post'|'video'|'reel'|'poll'|'link'|'product'|'quote';
+const clean=(v:unknown,max:number)=>String(v??'').trim().slice(0,max);
+function visibility(v:unknown):Visibility{if(v==='followers'||v==='private')return v;return 'public';}
+function contentType(v:unknown):ContentType{const allowed=['post','video','reel','poll','link','product','quote'];return allowed.includes(String(v))?String(v) as ContentType:'post';}
+async function ownedReadyMedia(userId:string,ids:string[]){if(!ids.length)return[];const r=await query<any>(`SELECT id,media_type,storage_key,width,height,duration_ms FROM media_assets WHERE owner_id=$1 AND status='ready' AND moderation_status='approved' AND id=ANY($2::uuid[])`,[userId,ids]);if(r.rowCount!==ids.length)throw new Error('One or more media assets are not ready');return r.rows;}
+export async function createAdvancedPost(userId:string,input:any){
+ const caption=clean(input.caption,2200), type=contentType(input.contentType), vis=visibility(input.visibility);const ids=[...new Set(Array.isArray(input.mediaAssetIds)?input.mediaAssetIds.map(String).filter(Boolean):[])].slice(0,10);if(ids.length>10)throw new Error('Too many media assets');
+ const warning=clean(input.contentWarning,240)||null;const location=clean(input.location,160)||null;const allowComments=input.allowComments!==false;const linkUrl=clean(input.linkUrl,2048)||null;const alt=clean(input.altText,500)||null;const productId=input.productId?String(input.productId):null;const quotePostId=input.quotePostId?String(input.quotePostId):null;const mentions=[...new Set(Array.isArray(input.mentionUserIds)?input.mentionUserIds.map(String).filter(Boolean):[])].slice(0,50);
+ if(type==='link'&&!linkUrl)throw new Error('Link URL required');if(type==='product'&&!productId)throw new Error('Product required');if(type==='quote'&&!quotePostId)throw new Error('Quoted post required');
+ const media=await ownedReadyMedia(userId,ids);
+ return withTransaction(async client=>{const p=await client.query<{id:string;created_at:Date}>(`INSERT INTO posts(author_id,caption,visibility,content_type,content_warning,location_label,allow_comments,metadata) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,created_at`,[userId,caption,vis, type,warning,location,allowComments,JSON.stringify({linkUrl,altText:alt,contentType:type})]);const post=p.rows[0];
+  for(const [i,m] of media.entries())await client.query(`INSERT INTO post_media(post_id,media_type,storage_key,width,height,duration_ms,alt_text,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,[post.id,m.media_type,m.storage_key,m.width,m.height,m.duration_ms,alt,i]);
+  for(const mentioned of mentions){const exists=await client.query('SELECT 1 FROM users WHERE id=$1',[mentioned]);if(exists.rowCount)await client.query('INSERT INTO post_mentions(post_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[post.id,mentioned]);}
+  if(productId){const product=await client.query('SELECT 1 FROM products WHERE id=$1',[productId]);if(!product.rowCount)throw new Error('Product not found');await client.query('INSERT INTO post_product_tags(post_id,product_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[post.id,productId]);}
+  if(quotePostId){const q=await client.query('SELECT 1 FROM posts WHERE id=$1 AND deleted_at IS NULL',[quotePostId]);if(!q.rowCount)throw new Error('Quoted post not found');await client.query('INSERT INTO post_reposts(post_id,user_id,quote) VALUES($1,$2,$3) ON CONFLICT DO UPDATE SET quote=EXCLUDED.quote',[quotePostId,userId,caption]);}
+  if(type==='link')await client.query('INSERT INTO post_links(post_id,url) VALUES($1,$2) ON CONFLICT DO UPDATE SET url=EXCLUDED.url',[post.id,linkUrl]);
+  if(type==='poll'){const question=caption||clean(input.pollQuestion,500);const options=Array.isArray(input.pollOptions)?input.pollOptions.map((x:unknown)=>clean(x,120)).filter(Boolean).slice(0,6):[];if(!question||options.length<2)throw new Error('Poll needs a question and at least two options');await client.query('INSERT INTO post_polls(post_id,question,multiple_choice,closes_at) VALUES($1,$2,$3,$4)',[post.id,question,input.pollMultiple===true,input.pollClosesAt?new Date(String(input.pollClosesAt)):null]);for(const [i,label] of options.entries())await client.query('INSERT INTO post_poll_options(post_id,label,sort_order) VALUES($1,$2,$3)',[post.id,label,i]);}
+  return{id:post.id,createdAt:post.created_at.toISOString()};
+ });
+}
+export async function saveCreatorDraft(userId:string,input:any){const payload=JSON.stringify(input??{});if(payload.length>200_000)throw new Error('Draft is too large');const r=await query<{id:string;updated_at:Date}>('INSERT INTO creator_drafts(user_id,payload) VALUES($1,$2) RETURNING id,updated_at',[userId,payload]);return{id:r.rows[0].id,updatedAt:r.rows[0].updated_at.toISOString()};}
+export async function listCreatorDrafts(userId:string){const r=await query('SELECT id,payload,created_at,updated_at FROM creator_drafts WHERE user_id=$1 ORDER BY updated_at DESC LIMIT 50',[userId]);return{drafts:r.rows};}
+export async function deleteCreatorDraft(userId:string,id:string){await query('DELETE FROM creator_drafts WHERE id=$1 AND user_id=$2',[id,userId]);return{ok:true};}
