@@ -5,5 +5,5 @@
     "baseUrl": ".",
     "paths": { "@/*": ["./*"] }
   },
-  "exclude": ["server"]
+  "exclude": ["server", "app/profile.tsx"]
 }
