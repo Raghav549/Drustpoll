@@ -3,6 +3,7 @@ export class ApiError extends Error{constructor(public status:number,message:str
 export async function api<T>(path:string,init:RequestInit={}):Promise<T>{if(!API_URL)throw new ApiError(0,'EXPO_PUBLIC_API_URL is not configured');const res=await fetch(`${API_URL}${path}`,{...init,credentials:'include',headers:{'Content-Type':'application/json',...(init.headers??{})}});const text=await res.text();let data:any={};try{data=text?JSON.parse(text):{};}catch{data={error:'Invalid server response'};}if(!res.ok)throw new ApiError(res.status,String(data.error??`Request failed (${res.status})`));return data as T;}
 export type FeedPost={id:string;author_id:string;caption:string;visibility:string;created_at:string;content_type?:string;content_warning?:string;location_label?:string|null;allow_comments?:boolean;metadata?:any;like_count:number;comment_count:number;save_count:number;share_count:number;liked_by_me?:boolean;saved_by_me?:boolean;username?:string;display_name?:string;avatar_url?:string|null;media:Array<{type:'image'|'video';uri:string;storageKey?:string;alt?:string;width?:number|null;height?:number|null;durationMs?:number|null}>};
 export async function getFeed(mode:'for_you'|'following'|'latest'='for_you',before?:string){return api<{items:FeedPost[];nextCursor?:string|null}>(`/v1/feed?mode=${mode}${before?`&before=${encodeURIComponent(before)}`:''}`);}
+export async function recordExposure(items:any[]){return api('/v1/recommendation/exposure',{method:'POST',body:JSON.stringify({items})});}
 export async function toggleReaction(postId:string){return api<{active:boolean;reaction:string|null}>(`/v1/posts/${encodeURIComponent(postId)}/reaction`,{method:'POST'});}
 export async function toggleSave(postId:string){return api<{saved:boolean}>(`/v1/posts/${encodeURIComponent(postId)}/save`,{method:'POST'});}
 export async function addComment(postId:string,body:string,parentId?:string){return api<{id:string;createdAt:string}>(`/v1/posts/${encodeURIComponent(postId)}/comments`,{method:'POST',body:JSON.stringify({body,parentId})});}
@@ -11,8 +12,9 @@ export async function getCommentReplies(commentId:string,limit=50,before?:string
 export async function getPoll(postId:string){return api<any>(`/v1/posts/${encodeURIComponent(postId)}/poll`);}
 export async function votePoll(postId:string,optionId:string){return api<{ok:boolean}>(`/v1/posts/${encodeURIComponent(postId)}/poll`,{method:'POST',body:JSON.stringify({optionId})});}
 export async function repostPost(postId:string,quote=''){return api<{reposted:boolean}>(`/v1/posts/${encodeURIComponent(postId)}/repost`,{method:'POST',body:JSON.stringify({quote})});}
-export async function recommendationFeedback(input:{objectType:'post'|'reel'|'product'|'creator'|'topic';objectId:string;signal:'more_like_this'|'less_like_this'|'not_interested'|'hide'|'mute'|'report';context?:string}){return api<{ok:boolean}>('/v1/recommendation/feedback',{method:'POST',body:JSON.stringify(input)});}
-export async function removeRecommendationFeedback(input:{objectType:'post'|'reel'|'product'|'creator'|'topic';objectId:string;signal:'more_like_this'|'less_like_this'|'not_interested'|'hide'|'mute'|'report';context?:string}){return api<{ok:boolean}>('/v1/recommendation/feedback',{method:'DELETE',body:JSON.stringify(input)});}
+export type FeedbackObjectType='post'|'reel'|'product'|'creator'|'topic';export type FeedbackSignal='more_like_this'|'less_like_this'|'not_interested'|'hide'|'mute'|'report';
+export async function recommendationFeedback(input:{objectType:FeedbackObjectType;objectId:string;signal:FeedbackSignal;context?:string}){return api<{ok:boolean}>('/v1/recommendation/feedback',{method:'POST',body:JSON.stringify(input)});}
+export async function removeRecommendationFeedback(input:{objectType:FeedbackObjectType;objectId:string;signal:FeedbackSignal;context?:string}){return api<{ok:boolean}>('/v1/recommendation/feedback',{method:'DELETE',body:JSON.stringify(input)});}
 export async function setHiddenTopic(topic:string,hidden=true){return api<{topic:string;hidden:boolean}>('/v1/feed/hidden-topics',{method:hidden?'POST':'DELETE',body:JSON.stringify({topic})});}
 export async function listHiddenTopics(){return api<{topics:Array<{topic:string;created_at:string}>}>('/v1/feed/hidden-topics');}
 export async function getFeedPreferences(){return api<{mode:'for_you'|'following'|'latest';topic:string|null;updated_at:string|null}>('/v1/feed/preferences');}
@@ -29,6 +31,8 @@ export async function reelCreatorFeedback(creatorId:string,signal:'hide'|'mute'|
 export async function getReelAudio(q=''){return api<{audio:any[]}>(`/v1/reels/audio?q=${encodeURIComponent(q)}`);}
 export async function getRelatedReels(postId:string){return api<{items:any[]}>(`/v1/reels/related?postId=${encodeURIComponent(postId)}`);}
 export async function getDiscoveryResults(q:string,kind='all',sort='relevance',limit=20){return api<{query:string;people:any[];posts:any[];videos:any[];products:any[];shops:any[];topics:any[];suggestions:string[];sort:string}>(`/v1/discovery/results?q=${encodeURIComponent(q)}&kind=${encodeURIComponent(kind)}&sort=${encodeURIComponent(sort)}&limit=${limit}`);}
+export type DiscoveryResult={query:string;people:any[];posts:any[];videos:any[];products:any[];shops:any[];topics:any[];suggestions:string[];sort:string};
+export async function searchDiscovery(q:string,kind='all',limit=20){return api<DiscoveryResult>(`/v1/discovery/search?q=${encodeURIComponent(q)}&kind=${encodeURIComponent(kind)}&limit=${limit}`);}
 export async function getDiscoveryFeed(params:{topic?:string;category?:string;limit?:number}={}){const qs=new URLSearchParams();if(params.topic)qs.set('topic',params.topic);if(params.category)qs.set('category',params.category);qs.set('limit',String(params.limit??20));return api<{topic:string;category:string;items:any[]}>(`/v1/discovery/feed?${qs.toString()}`);}
 export async function getRecentSearches(){return api<{items:Array<{query:string;last_used_at:string}>}>('/v1/discovery/recent-searches');}
 export async function clearRecentSearches(){return api('/v1/discovery/recent-searches',{method:'DELETE'});}
@@ -73,9 +77,10 @@ export async function createConversation(participantIds:string[]){return api<{id
 export async function markConversationRead(id:string){return api<{updated:number}>(`/v1/messages/conversations/${encodeURIComponent(id)}/read`,{method:'POST'});}
 export async function getMessages(id:string,limit=50,before?:string){return api<{messages:any[];nextBefore:string|null}>(`/v1/messages/conversations/${encodeURIComponent(id)}/messages?limit=${Math.min(Math.max(limit,1),100)}${before?`&before=${encodeURIComponent(before)}`:''}`);}
 export async function sendEncryptedMessage(id:string,ciphertext:string,keyVersion=1,deviceId?:string){return api<{id:string;createdAt:string}>(`/v1/messages/conversations/${encodeURIComponent(id)}/messages`,{method:'POST',body:JSON.stringify({ciphertext,keyVersion,deviceId})});}
-export async function getDeviceKeys(userId:string){return api<{bundles:any[]}>(`/v1/messages/devices/${encodeURIComponent(userId)}`);}
 export type Notification={id:string;actor_id:string|null;type:string;object_id:string|null;grouped_key:string|null;metadata:Record<string,unknown>;category?:string;read_at:string|null;created_at:string;actor_username?:string|null;actor_display_name?:string|null;actor_avatar_url?:string|null};
 export type NotificationPreferences={social:boolean;mentions_replies:boolean;follows:boolean;commerce_orders:boolean;security:boolean;system:boolean;digest_enabled:boolean;digest_frequency:'daily'|'weekly';quiet_enabled:boolean;quiet_start_minute:number;quiet_end_minute:number;quiet_timezone:string;updated_at:string|null};
+export type PrivacySettings={profile_visibility:string;activity_visibility:string;discoverability:string;message_requests:string;personalized_ads?:boolean;search_engine_indexing?:boolean};
+export type SessionInfo={id:string;createdAt:string;lastSeenAt:string|null;expiresAt:string;current:boolean;userAgent?:string;ipHash?:string};
 export async function getPrivacy(){return api<any>('/v1/privacy');}
 export async function updatePrivacy(input:any){return api<any>('/v1/privacy',{method:'PUT',body:JSON.stringify(input)});}
 export async function getNotifications(limit=30,before?:string,category='all'){return api<{notifications:Notification[];nextBefore:string|null}>(`/v1/notifications?limit=${Math.min(Math.max(limit,1),100)}&category=${encodeURIComponent(category)}${before?`&before=${encodeURIComponent(before)}`:''}`);}
@@ -105,6 +110,9 @@ export async function requestReturn(orderId:string,reason:string,notes=''){retur
 export async function getReturns(orderId?:string){return api<{returns:any[]}>(`/v1/market/returns${orderId?`?orderId=${encodeURIComponent(orderId)}`:''}`);}
 export async function openOrderSupport(orderId:string,subject:string){return api(`/v1/market/orders/${encodeURIComponent(orderId)}/support`,{method:'POST',body:JSON.stringify({subject})});}
 export async function setShippingProfile(productId:string,input:any){return api(`/v1/market/products/${encodeURIComponent(productId)}/shipping`,{method:'PUT',body:JSON.stringify(input)});}
+export async function getSessions(){return api<{sessions:SessionInfo[]}>('/v1/auth/sessions');}
+export async function revokeSession(id:string){return api(`/v1/auth/sessions/${encodeURIComponent(id)}/revoke`,{method:'POST'});}
+export async function revokeAllSessions(){return api('/v1/auth/sessions/revoke-all',{method:'POST'});}
 export async function getSafetyState(targetUserId:string){return api<any>(`/v1/safety/state?targetUserId=${encodeURIComponent(targetUserId)}`);}
 export async function setBlocked(targetUserId:string,blocked:boolean){return api(`/v1/safety/block`,{method:blocked?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
 export async function setMuted(targetUserId:string,muted:boolean){return api(`/v1/safety/mute`,{method:muted?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
