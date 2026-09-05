@@ -4,7 +4,7 @@ import {Link} from 'expo-router';
 import {getProfessionalProfile,updateProfessionalProfile,getBusinessVerification,requestBusinessVerification,getMyProfileSurface,getSellerCommerceSettings,updateSellerCommerceSettings} from '../src/api/client';
 import {AppShell} from '../src/ui/AppShell';
 import {Icon} from '../src/ui/icons';
-import {colors,radius,spacing,type} from '../src/ui/theme';
+import {colors,elevation,radius,spacing,type} from '../src/ui/theme';
 
 export default function AccountControls(){
  const[profile,setProfile]=useState<any>(null),[professional,setProfessional]=useState<any>(null),[verification,setVerification]=useState<any[]>([]),[shop,setShop]=useState<any>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState<string|null>(null);
