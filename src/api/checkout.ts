@@ -1,9 +1,78 @@
 import { api } from './client';
-export type CheckoutSession={id:string;buyer_id:string;idempotency_key:string;currency:string|null;address_id:string|null;delivery_code:string|null;payment_method:string|null;status:string;subtotal_minor:number;shipping_minor:number;total_minor:number;delivery_min_days?:number|null;delivery_max_days?:number|null;address_snapshot?:any};
-export async function prepareCheckout(idempotencyKey:string){const r:any=await api('/v1/checkout/prepare',{method:'POST',body:JSON.stringify({idempotencyKey})});return (r.checkout??r) as CheckoutSession;}
-export async function getCheckoutState(idempotencyKey:string){return api<{checkout:CheckoutSession|null}>(`/v1/checkout/state?key=${encodeURIComponent(idempotencyKey)}`);}
-export async function setCheckoutAddress(sessionId:string,addressId:string){const r:any=await api(`/v1/checkout/${encodeURIComponent(sessionId)}/address`,{method:'PUT',body:JSON.stringify({addressId})});return (r.checkout??r) as CheckoutSession;}
-export async function setCheckoutDelivery(sessionId:string,input:{code:string;feeMinor:number;minDays?:number;maxDays?:number}){const r:any=await api(`/v1/checkout/${encodeURIComponent(sessionId)}/delivery`,{method:'PUT',body:JSON.stringify(input)});return (r.checkout??r) as CheckoutSession;}
-export async function setCheckoutPaymentMethod(sessionId:string,method:string){const r:any=await api(`/v1/checkout/${encodeURIComponent(sessionId)}/payment-method`,{method:'PUT',body:JSON.stringify({method})});return (r.checkout??r) as CheckoutSession;}
-export async function finalizeCheckout(sessionId:string){return api<{checkout:CheckoutSession;orders:Array<{orderId:string;totalMinor:number;currency:string;status:string}>>}>(`/v1/checkout/${encodeURIComponent(sessionId)}/finalize`,{method:'POST'});}
-export async function createPaymentIntent(orderId:string,idempotencyKey:string){return api<any>('/v1/payments/intents',{method:'POST',body:JSON.stringify({orderId,idempotencyKey})});}
+
+export type CheckoutSession = {
+  id: string;
+  buyer_id: string;
+  idempotency_key: string;
+  currency: string | null;
+  address_id: string | null;
+  delivery_code: string | null;
+  payment_method: string | null;
+  status: string;
+  subtotal_minor: number;
+  shipping_minor: number;
+  total_minor: number;
+  delivery_min_days?: number | null;
+  delivery_max_days?: number | null;
+  address_snapshot?: unknown;
+};
+
+export async function prepareCheckout(idempotencyKey: string) {
+  const r: any = await api('/v1/checkout/prepare', {
+    method: 'POST',
+    body: JSON.stringify({ idempotencyKey }),
+  });
+  return (r.checkout ?? r) as CheckoutSession;
+}
+
+export async function getCheckoutState(idempotencyKey: string) {
+  return api<{ checkout: CheckoutSession | null }>(
+    `/v1/checkout/state?key=${encodeURIComponent(idempotencyKey)}`,
+  );
+}
+
+export async function setCheckoutAddress(sessionId: string, addressId: string) {
+  const r: any = await api(`/v1/checkout/${encodeURIComponent(sessionId)}/address`, {
+    method: 'PUT',
+    body: JSON.stringify({ addressId }),
+  });
+  return (r.checkout ?? r) as CheckoutSession;
+}
+
+export async function setCheckoutDelivery(
+  sessionId: string,
+  input: { code: string; feeMinor: number; minDays?: number; maxDays?: number },
+) {
+  const r: any = await api(`/v1/checkout/${encodeURIComponent(sessionId)}/delivery`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+  return (r.checkout ?? r) as CheckoutSession;
+}
+
+export async function setCheckoutPaymentMethod(sessionId: string, method: string) {
+  const r: any = await api(`/v1/checkout/${encodeURIComponent(sessionId)}/payment-method`, {
+    method: 'PUT',
+    body: JSON.stringify({ method }),
+  });
+  return (r.checkout ?? r) as CheckoutSession;
+}
+
+export async function finalizeCheckout(sessionId: string) {
+  return api<{
+    checkout: CheckoutSession;
+    orders: Array<{
+      orderId: string;
+      totalMinor: number;
+      currency: string;
+      status: string;
+    }>;
+  }>(`/v1/checkout/${encodeURIComponent(sessionId)}/finalize`, { method: 'POST' });
+}
+
+export async function createPaymentIntent(orderId: string, idempotencyKey: string) {
+  return api<any>('/v1/payments/intents', {
+    method: 'POST',
+    body: JSON.stringify({ orderId, idempotencyKey }),
+  });
+}
