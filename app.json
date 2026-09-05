@@ -8,8 +8,7 @@
     "userInterfaceStyle": "automatic",
     "web": {
       "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/drustpoll-mark.svg"
+      "output": "static"
     },
     "plugins": ["expo-router", "expo-splash-screen"],
     "experiments": { "typedRoutes": true },
