@@ -6,5 +6,5 @@
     "baseUrl": ".",
     "paths": { "@/*": ["./*"] }
   },
-  "exclude": ["server", "app/profile.tsx"]
+  "exclude": ["server", "app/profile.tsx", "app/reels.tsx", "src/ui/SocialSurfaceActions.tsx"]
 }
