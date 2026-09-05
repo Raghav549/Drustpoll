@@ -51,6 +51,8 @@ export async function setCheckoutDelivery(sessionId:string,input:{code:string;fe
 export async function setCheckoutPaymentMethod(sessionId:string,method:string){return api<any>(`/v1/checkout/${encodeURIComponent(sessionId)}/payment-method`,{method:'PUT',body:JSON.stringify({method})});}
 export async function finalizeCheckout(sessionId:string){return api<any>(`/v1/checkout/${encodeURIComponent(sessionId)}/finalize`,{method:'POST'});}
 export async function createPaymentIntent(orderId:string,idempotencyKey:string){return api<any>('/v1/payments/intents',{method:'POST',body:JSON.stringify({orderId,idempotencyKey})});}
+export async function getAdForViewer(context='feed'){return api<any>(`/v1/ads/serve?context=${encodeURIComponent(context)}`);}
+export async function reportAdViewerFeedback(creativeId:string,signal:'hide'|'not_relevant'|'report'|'why_this'){return api<any>(`/v1/ads/serve/${encodeURIComponent(creativeId)}/feedback`,{method:'POST',body:JSON.stringify({signal})});}
 export async function getMarketCategories(){return api<any>('/v1/market/categories');}
 export async function getMarketProducts(params:any={}){const q=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v!==undefined&&v!==null&&v!=='')q.set(k,String(v));});return api<any>(`/v1/market/products?${q.toString()}`);}
 export async function getSavedProducts(limit=50,before?:string){return api<any>(`/v1/market/saved-products?limit=${limit}${before?`&before=${encodeURIComponent(before)}`:''}`);}
@@ -73,7 +75,8 @@ export async function reportAdFeedback(creativeId:string,signal:'hide'|'not_rele
 export async function getAddresses(){return api<any>('/v1/market/addresses');}
 export async function saveAddress(input:any){return api<any>('/v1/market/addresses',{method:'POST',body:JSON.stringify(input)});}
 export async function getDeliveryEstimate(productId:string,addressId:string){return api<any>(`/v1/market/products/${encodeURIComponent(productId)}/delivery?addressId=${encodeURIComponent(addressId)}`);}
-export async function recordCommerceEvent(input:any){return api<any>('/v1/market/events',{method:'POST',body:JSON.stringify(input)});}
+export async function recordCommerceEvent(input:any){return api<any>('/v1/market/events',{method:'POST',body:JSON.stringify(input)});
+}
 export async function getCart(){return api<any>('/v1/cart');}
 export async function updateCartItem(productId:string,quantity:number,variantId?:string){return api<any>('/v1/cart',{method:'PUT',body:JSON.stringify({productId,quantity,variantId})});}
 export async function addCartItem(productId:string,quantity:number,variantId?:string){return api<any>('/v1/cart',{method:'POST',body:JSON.stringify({productId,quantity,variantId})});}
@@ -94,3 +97,6 @@ export async function getPrivacyPermissions(){return api<any>('/v1/privacy/permi
 export async function getSecurityAlerts(){return api<any>('/v1/security/alerts');}
 export async function getSecurityEvents(){return api<any>('/v1/security/events');}
 export async function secureAccount(){return api<any>('/v1/security/secure-account',{method:'POST'});}
+export async function cancelOrder(orderId:string){return api<any>(`/v1/orders/${encodeURIComponent(orderId)}/cancel`,{method:'POST'});}
+export async function requestReturn(orderId:string,reason:string){return api<any>(`/v1/market/orders/${encodeURIComponent(orderId)}/returns`,{method:'POST',body:JSON.stringify({reason})});}
+export async function openOrderSupport(orderId:string,subject:string){return api<any>(`/v1/market/orders/${encodeURIComponent(orderId)}/support`,{method:'POST',body:JSON.stringify({subject})});}
