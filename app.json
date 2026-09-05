@@ -6,11 +6,22 @@
     "scheme": "drustpoll",
     "orientation": "default",
     "userInterfaceStyle": "automatic",
-    "web": { "bundler": "metro", "output": "static", "favicon": "./assets/drustpoll-mark.svg" },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/drustpoll-mark.svg"
+    },
     "plugins": ["expo-router", "expo-splash-screen"],
     "experiments": { "typedRoutes": true },
     "ios": { "supportsTablet": true },
-    "android": { "adaptiveIcon": { "backgroundColor": "#F5F6F2", "foregroundImage": "./assets/drustpoll-mark.svg" } },
-    "splash": { "image": "./assets/drustpoll-mark.svg", "resizeMode": "contain", "backgroundColor": "#F5F6F2" }
+    "android": {
+      "package": "com.drustpoll.app",
+      "versionCode": 1,
+      "edgeToEdgeEnabled": true
+    },
+    "splash": {
+      "backgroundColor": "#F5F6F2",
+      "resizeMode": "contain"
+    }
   }
 }
