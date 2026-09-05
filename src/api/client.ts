@@ -37,6 +37,7 @@ export async function clearRecentSearches(){return api<any>('/v1/discovery/recen
 export async function getSavedSearches(){return api<any>('/v1/discovery/saved-searches');}
 export async function saveSearch(query:string,kind='all'){return api<any>('/v1/discovery/saved-searches',{method:'POST',body:JSON.stringify({query,kind})});}
 export async function deleteSavedSearch(id:string){return api<any>(`/v1/discovery/saved-searches/${encodeURIComponent(id)}`,{method:'DELETE'});}
+export * from './discovery-client';
 export * from './social-client';
 export * from './commerce-client';
 export * from './account-client';
