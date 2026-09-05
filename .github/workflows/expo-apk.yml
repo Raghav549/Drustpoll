@@ -14,7 +14,37 @@ on:
           - production
 
 jobs:
-  build-android-apk:
+  native-compile:
+    name: Native Android compile gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Expo Doctor
+        run: npx expo-doctor@latest
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --clean --no-install
+        env:
+          EXPO_NO_GIT_STATUS: '1'
+      - name: Assemble debug APK
+        run: ./android/gradlew :app:assembleDebug --no-daemon --stacktrace
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: drustpoll-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  eas-build:
+    name: EAS installable APK
+    needs: native-compile
     runs-on: ubuntu-latest
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -24,8 +54,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install dependencies and refresh lockfile
+        run: npm install --package-lock-only --no-audit --no-fund && npm install --no-audit --no-fund
       - name: Expo Doctor
         run: npx expo-doctor@latest
       - name: Typecheck
