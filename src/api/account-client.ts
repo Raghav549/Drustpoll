@@ -33,3 +33,10 @@ export async function createAdCampaign(input:any){return api<any>('/v1/ads/campa
 export async function createAdCreative(campaignId:string,input:any){return api<any>(`/v1/ads/campaigns/${encodeURIComponent(campaignId)}/creatives`,{method:'POST',body:JSON.stringify(input)});}
 export async function getAdForViewer(context='feed'){return api<any>(`/v1/ads/serve?context=${encodeURIComponent(context)}`);}
 export async function reportAdViewerFeedback(creativeId:string,signal:string){return api<any>(`/v1/ads/serve/${encodeURIComponent(creativeId)}/feedback`,{method:'POST',body:JSON.stringify({signal})});}
+export async function getSafetyState(targetUserId?:string){return api<any>(`/v1/safety/state${targetUserId?`?targetUserId=${encodeURIComponent(targetUserId)}`:''}`);}
+export async function reportTarget(target:any,reason:string,details=''){return api<any>('/v1/safety/report',{method:'POST',body:JSON.stringify({target,reason,details})});}
+export async function setRestricted(targetUserId:string,restricted:boolean){return api<any>('/v1/safety/restrict',{method:restricted?'POST':'DELETE',body:JSON.stringify({targetUserId})});}
+export async function getSafetyCases(){return api<any>('/v1/safety/cases');}
+export async function addReportEvidence(caseId:string,evidence:any){return api<any>(`/v1/safety/cases/${encodeURIComponent(caseId)}/evidence`,{method:'POST',body:JSON.stringify(evidence)});}
+export async function submitSafetyAppeal(caseId:string,reason:string){return api<any>(`/v1/safety/cases/${encodeURIComponent(caseId)}/appeal`,{method:'POST',body:JSON.stringify({reason})});}
+export async function getModerationNotices(){return api<any>('/v1/safety/notices');}
