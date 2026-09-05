@@ -1,9 +1,11 @@
 import {useEffect,useState} from 'react';
 import {Stack} from 'expo-router';
+import * as NativeSplash from 'expo-splash-screen';
 import {StatusBar} from 'expo-status-bar';
-import {SplashScreen} from 'expo-router';
+import {ActivityIndicator,StyleSheet,Text,View} from 'react-native';
 import {AuthProvider} from '../src/core/auth/AuthProvider';
-import {View,ActivityIndicator} from 'react-native';
-import {colors} from '../src/ui/theme';
+import {colors,radius,type} from '../src/ui/theme';
 
-export default function RootLayout(){const[ready,setReady]=useState(false);useEffect(()=>{let alive=true;const t=setTimeout(()=>{if(alive){setReady(true);void SplashScreen.hideAsync();}},420);return()=>{alive=false;clearTimeout(t);};},[]);return <AuthProvider><StatusBar style="dark"/><Stack screenOptions={{headerShown:false,animation:'fade',animationDuration:160,gestureEnabled:true,contentStyle:{backgroundColor:colors.canvas}}}/>{!ready?<View pointerEvents="none" style={{position:'absolute',inset:0,backgroundColor:colors.canvas,alignItems:'center',justifyContent:'center'}}><ActivityIndicator color={colors.brand}/></View>:null}</AuthProvider>}
+void NativeSplash.preventAutoHideAsync().catch(()=>undefined);
+export default function RootLayout(){const[ready,setReady]=useState(false);useEffect(()=>{const t=setTimeout(()=>{setReady(true);void NativeSplash.hideAsync();},460);return()=>clearTimeout(t);},[]);return <AuthProvider><StatusBar style="dark"/><Stack screenOptions={{headerShown:false,animation:'fade',animationDuration:160,gestureEnabled:true,contentStyle:{backgroundColor:colors.canvas}}}/>{!ready?<View pointerEvents="none" style={s.overlay}><View style={s.mark}><View style={s.nodeA}/><View style={s.nodeB}/><View style={s.nodeC}/><View style={s.bridgeA}/><View style={s.bridgeB}/></View><Text style={s.brand}>drustpoll</Text><Text style={s.tag}>people · ideas · places</Text><ActivityIndicator color={colors.brand} style={{marginTop:18}}/></View>:null}</AuthProvider>}
+const s=StyleSheet.create({overlay:{...StyleSheet.absoluteFillObject,backgroundColor:colors.canvas,alignItems:'center',justifyContent:'center'},mark:{width:92,height:92,borderRadius:30,backgroundColor:colors.brand,position:'relative',transform:[{rotate:'-6deg'}]},nodeA:{position:'absolute',width:13,height:13,borderRadius:7,backgroundColor:colors.white,left:22,top:25},nodeB:{position:'absolute',width:13,height:13,borderRadius:7,backgroundColor:colors.white,right:21,top:19},nodeC:{position:'absolute',width:13,height:13,borderRadius:7,backgroundColor:colors.white,left:40,bottom:19},bridgeA:{position:'absolute',height:2,width:31,backgroundColor:colors.white,left:32,top:28,transform:[{rotate:'-13deg'}]},bridgeB:{position:'absolute',height:2,width:27,backgroundColor:colors.white,left:30,top:47,transform:[{rotate:'51deg'}]},brand:{marginTop:20,fontSize:29,fontWeight:'900',letterSpacing:-1,color:colors.ink},tag:{marginTop:4,fontSize:type.bodySM,fontWeight:'700',letterSpacing:1,color:colors.muted}});
