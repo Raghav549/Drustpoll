@@ -5,14 +5,13 @@ const root=process.cwd();
 const core=fs.readFileSync(path.join(root,'src/i18n/core.ts'),'utf8');
 const localeCodes=[...core.matchAll(/\{code:'([^']+)'/g)].map(m=>m[1]);
 
-// Parse the first-level dictionary names inside `packs` without relying on
-// exact indentation or a brittle multiline regexp. The previous gate could
-// incorrectly miss the English pack even though `en` is defined in the file.
+// `en` is the base dictionary and lives as `const en`, while translated
+// dictionaries live under `packs`. Treat both as actual packs in CI.
+const packCodes=new Set(['en']);
 const packsStart=core.indexOf('const packs:Record<string,Dictionary>={');
 const exportAfterPacks=core.indexOf('\nexport function t',packsStart);
 if(packsStart<0||exportAfterPacks<0)throw new Error('Unable to locate i18n packs registry.');
 const packsText=core.slice(packsStart+'const packs:Record<string,Dictionary>={'.length,exportAfterPacks);
-const packCodes=new Set();
 for(const line of packsText.split(/\r?\n/)){
   const match=line.match(/^\s*([A-Za-z][A-Za-z0-9-]*):\s*\{/);
   if(match)packCodes.add(match[1]);
