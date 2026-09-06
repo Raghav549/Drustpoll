@@ -30,3 +30,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
+      - name: Live auth smoke
+        working-directory: .
+        env:
+          API_URL: https://drustpoll.onrender.com
+        run: node scripts/ci-auth-smoke.mjs
