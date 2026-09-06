@@ -1,7 +1,18 @@
 import pg from 'pg';
 import { config } from './config.js';
 
-export const pool = new pg.Pool({ connectionString: config.databaseUrl, max: 20, ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : undefined });
+// Render's managed Postgres certificate chain is not trusted by Node's default
+// CA store. Keep TLS enabled in production, while allowing the deployment to
+// opt into strict CA verification when a trusted CA is explicitly configured.
+const productionSsl = process.env.NODE_ENV === 'production'
+  ? { rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === 'true' }
+  : undefined;
+
+export const pool = new pg.Pool({
+  connectionString: config.databaseUrl,
+  max: 20,
+  ssl: productionSsl,
+});
 
 export async function query<T extends pg.QueryResultRow = pg.QueryResultRow>(text: string, values: unknown[] = []): Promise<pg.QueryResult<T>> {
   return pool.query<T>(text, values);
