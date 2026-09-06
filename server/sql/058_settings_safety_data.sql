@@ -5,11 +5,6 @@ CREATE INDEX IF NOT EXISTS safety_cases_reporter_updated_idx ON safety_cases(rep
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='privacy_consents_version_nonempty') THEN
-    ALTER TABLE privacy_consents ADD CONSTRAINT privacy_consents_version_nonempty CHECK(length(trim(version))>0);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='privacy_consents_type_nonempty') THEN
-    ALTER TABLE privacy_consents ADD CONSTRAINT privacy_consents_type_nonempty CHECK(length(trim(consent_type))>0);
+    ALTER TABLE privacy_consents ADD CONSTRAINT privacy_consents_version_nonempty CHECK(length(trim(consent_type))>0 AND length(trim(version))>0);
   END IF;
 END $$;
-
-INSERT INTO schema_migrations(version) VALUES('058_settings_safety_data.sql') ON CONFLICT DO NOTHING;
