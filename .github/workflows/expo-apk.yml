@@ -2,7 +2,7 @@ name: Expo Android APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/eas-apk-build]
     paths:
       - 'app/**'
       - 'src/**'
@@ -38,6 +38,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Validate EAS/Expo source configuration
@@ -66,6 +67,7 @@ jobs:
     name: EAS installable APK
     runs-on: ubuntu-latest
     timeout-minutes: 47
+    needs: native-compile
     permissions:
       contents: write
     env:
@@ -75,6 +77,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Validate EAS/Expo source configuration
@@ -90,10 +93,18 @@ jobs:
         run: |
           if [ -z "$EXPO_TOKEN" ]; then
             echo "EXPO_TOKEN is required for the cloud EAS APK job."
-            echo "The native compile job above still proves that the Android project can be generated and assembled."
+            echo "Add an Expo access token as the repository secret EXPO_TOKEN, then re-run this workflow."
             exit 1
           fi
-      - name: Link or create EAS project
-        run: npx eas-cli@latest init --account kashyao_07 --force --non-interactive
+      - name: Link existing EAS project or create it
+        shell: bash
+        run: |
+          if [ -n "$EAS_PROJECT_ID" ]; then
+            npx eas-cli@latest init --id "$EAS_PROJECT_ID" --force --non-interactive
+          else
+            npx eas-cli@latest init --account kashyao_07 --force --non-interactive
+          fi
+        env:
+          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
       - name: Build Android APK with EAS
         run: npx eas-cli@latest build --platform android --profile "$EAS_PROFILE" --non-interactive --wait
