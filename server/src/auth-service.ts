@@ -46,21 +46,25 @@ async function createSession(userId: string, devicePublicKey: string, deviceLabe
 export async function signup(input: SignupInput, ipKey: string) {
   if (!consumeLimit(`signup:${ipKey}`, 8, 60 * 60 * 1000)) throw new Error('Too many signup attempts');
   const data = cleanSignup(input), passwordHash = await hashPassword(input.password);
-  return withTransaction(async client => {
+  const userId = await withTransaction(async client => {
     const existing = await client.query('SELECT 1 FROM users WHERE lower(username)=lower($1) OR ($2::text IS NOT NULL AND lower(email)=lower($2)) OR ($3::text IS NOT NULL AND phone=$3) LIMIT 1', [data.username, data.email ?? null, data.phone ?? null]);
     if (existing.rowCount) throw new Error('Account identifier already in use');
     const user = await client.query<{ id: string }>('INSERT INTO users(username,display_name,email,phone) VALUES($1,$2,$3,$4) RETURNING id', [data.username, data.displayName, data.email ?? null, data.phone ?? null]);
-    const userId = user.rows[0].id;
-    await client.query('INSERT INTO password_credentials(user_id,password_hash) VALUES($1,$2)', [userId, passwordHash]);
-    await client.query('INSERT INTO profiles(user_id) VALUES($1) ON CONFLICT DO NOTHING').catch(() => undefined);
-    const session = await createSession(userId, input.devicePublicKey ?? '', input.deviceLabel, ipKey, 'signup');
-    if (data.email) {
-      await requestOtp(userId, data.email, 'verify_email', ipKey);
-    } else if (data.phone) {
-      await requestOtp(userId, data.phone, 'verify_phone', ipKey);
-    }
-    return session;
+    const createdUserId = user.rows[0].id;
+    await client.query('INSERT INTO password_credentials(user_id,password_hash) VALUES($1,$2)', [createdUserId, passwordHash]);
+    await client.query('INSERT INTO profiles(user_id) VALUES($1) ON CONFLICT DO NOTHING');
+    return createdUserId;
   });
+
+  // The account must be committed before createSession(): device/session writes use
+  // the pool outside the signup transaction and devices.user_id is FK-protected.
+  const session = await createSession(userId, input.devicePublicKey ?? '', input.deviceLabel, ipKey, 'signup');
+  if (data.email) {
+    await requestOtp(userId, data.email, 'verify_email', ipKey);
+  } else if (data.phone) {
+    await requestOtp(userId, data.phone, 'verify_phone', ipKey);
+  }
+  return session;
 }
 
 export async function login(input: LoginInput, ipKey: string) {
