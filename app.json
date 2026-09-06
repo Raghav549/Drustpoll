@@ -7,13 +7,17 @@
     "scheme": "drustpoll",
     "orientation": "default",
     "userInterfaceStyle": "automatic",
+    "runtimeVersion": { "policy": "appVersion" },
     "web": {
       "bundler": "metro",
       "output": "static"
     },
     "plugins": ["expo-router"],
     "experiments": { "typedRoutes": true },
-    "ios": { "supportsTablet": true },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.drustpoll.app"
+    },
     "android": {
       "package": "com.drustpoll.app",
       "versionCode": 1
