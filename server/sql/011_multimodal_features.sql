@@ -1,17 +1,8 @@
-CREATE TABLE IF NOT EXISTS content_features (
-  post_id uuid PRIMARY KEY REFERENCES posts(id) ON DELETE CASCADE,
-  version integer NOT NULL DEFAULT 1,
-  status text NOT NULL DEFAULT 'queued' CHECK(status IN ('queued','running','ready','failed')),
-  text_features jsonb NOT NULL DEFAULT '{}'::jsonb,
-  image_features jsonb NOT NULL DEFAULT '{}'::jsonb,
-  audio_features jsonb NOT NULL DEFAULT '{}'::jsonb,
-  video_features jsonb NOT NULL DEFAULT '{}'::jsonb,
-  fused_features jsonb NOT NULL DEFAULT '{}'::jsonb,
-  extracted_at timestamptz,
-  error_code text,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS content_features_status_idx ON content_features(status,updated_at);
+-- 011 originally created content_features with a legacy single-row shape.
+-- Keep it compatibility-safe: the newer polymorphic content_features table is
+-- created by 012, so 011 must not create the incompatible legacy table first.
+-- Keep the recommendation job/evaluation tables here because they are still
+-- consumed by later migrations.
 
 CREATE TABLE IF NOT EXISTS recommendation_feature_jobs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
