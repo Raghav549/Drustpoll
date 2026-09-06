@@ -4,6 +4,7 @@
     "strict": true,
     "noImplicitAny": false,
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "paths": { "@/*": ["./*"] }
   },
   "exclude": ["server", "app/profile.tsx", "app/reels.tsx", "src/ui/SocialSurfaceActions.tsx"]
