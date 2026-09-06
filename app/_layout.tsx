@@ -2,12 +2,21 @@ import {useEffect,useState} from 'react';
 import {Stack} from 'expo-router';
 import * as NativeSplash from 'expo-splash-screen';
 import {StatusBar} from 'expo-status-bar';
-import {ActivityIndicator,StyleSheet,Text,View} from 'react-native';
+import {View,StyleSheet} from 'react-native';
 import {AuthProvider} from '../src/core/auth/AuthProvider';
 import {I18nProvider} from '../src/i18n/provider';
 import {InitialLanguageGate} from '../src/i18n/InitialLanguageGate';
-import {colors,type} from '../src/ui/theme';
+import {colors} from '../src/ui/theme';
+import {BrandMark} from '../src/ui/BrandMark';
 void NativeSplash.preventAutoHideAsync().catch(()=>undefined);
 const absoluteFillObject={position:'absolute' as const,top:0,left:0,right:0,bottom:0};
-export default function RootLayout(){const[ready,setReady]=useState(false);useEffect(()=>{const t=setTimeout(()=>{setReady(true);void NativeSplash.hideAsync();},560);return()=>clearTimeout(t);},[]);return <I18nProvider><InitialLanguageGate><AuthProvider><StatusBar style="dark"/><Stack screenOptions={{headerShown:false,animation:'fade',animationDuration:180,gestureEnabled:true,contentStyle:{backgroundColor:colors.canvas}}}/>{!ready?<View pointerEvents="none" style={s.overlay}><View style={s.mark}><View style={s.ringOuter}/><View style={s.nodeA}/><View style={s.nodeB}/><View style={s.nodeC}/><View style={s.bridgeA}/><View style={s.bridgeB}/><View style={s.orbit}/></View><Text style={s.brand}>drustpoll</Text><Text style={s.tag}>a living canvas for people, ideas & places</Text><View style={s.loading}><ActivityIndicator color={colors.brand}/><Text style={s.loadingText}>opening your space</Text></View></View>:null}</AuthProvider></InitialLanguageGate></I18nProvider>}
-const s=StyleSheet.create({overlay:{...absoluteFillObject,backgroundColor:colors.canvas,alignItems:'center',justifyContent:'center',paddingHorizontal:28},mark:{width:106,height:106,borderRadius:34,backgroundColor:colors.brand,position:'relative',transform:[{rotate:'-6deg'}],shadowColor:'#102B24',shadowOpacity:.14,shadowRadius:22,shadowOffset:{width:0,height:10},elevation:7,alignItems:'center',justifyContent:'center'},ringOuter:{position:'absolute',width:72,height:72,borderRadius:36,borderWidth:1.5,borderColor:'rgba(255,255,255,.32)'},nodeA:{position:'absolute',width:12,height:12,borderRadius:6,backgroundColor:colors.white,left:25,top:27},nodeB:{position:'absolute',width:12,height:12,borderRadius:6,backgroundColor:colors.white,right:24,top:21},nodeC:{position:'absolute',width:12,height:12,borderRadius:6,backgroundColor:colors.white,left:47,bottom:22},bridgeA:{position:'absolute',height:2,width:30,backgroundColor:colors.white,left:37,top:31,transform:[{rotate:'-13deg'}]},bridgeB:{position:'absolute',height:2,width:27,backgroundColor:colors.white,left:39,top:50,transform:[{rotate:'51deg'}]},orbit:{position:'absolute',width:62,height:23,borderRadius:14,borderWidth:2,borderColor:colors.social,left:22,top:42,transform:[{rotate:'20deg'}],opacity:.78},brand:{marginTop:24,fontSize:31,fontWeight:'900',letterSpacing:-1.3,color:colors.ink},tag:{marginTop:5,fontSize:type.bodySM,fontWeight:'600',letterSpacing:.25,color:colors.muted},loading:{marginTop:20,minHeight:40,flexDirection:'row',alignItems:'center',gap:9},loadingText:{fontSize:type.labelSM,fontWeight:'800',color:colors.faint}});
+export default function RootLayout(){
+ const[ready,setReady]=useState(false);
+ useEffect(()=>{const timer=setTimeout(()=>{setReady(true);void NativeSplash.hideAsync();},360);return()=>clearTimeout(timer);},[]);
+ return <I18nProvider><InitialLanguageGate><AuthProvider>
+   <StatusBar style="dark"/>
+   <Stack screenOptions={{headerShown:false,animation:'slide_from_right',animationDuration:240,gestureEnabled:true,contentStyle:{backgroundColor:colors.canvas}}}/>
+   {!ready?<View pointerEvents="none" style={s.overlay}><BrandMark size={88}/></View>:null}
+ </AuthProvider></InitialLanguageGate></I18nProvider>;
+}
+const s=StyleSheet.create({overlay:{...absoluteFillObject,backgroundColor:colors.canvas,alignItems:'center',justifyContent:'center'}});
