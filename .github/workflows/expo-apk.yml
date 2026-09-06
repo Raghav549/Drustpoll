@@ -86,18 +86,14 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Check EAS credentials
-        id: eas-auth
         shell: bash
         run: |
           if [ -z "$EXPO_TOKEN" ]; then
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "EAS token is not configured; cloud EAS build will be skipped."
-          else
-            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "EXPO_TOKEN is required for the cloud EAS APK job."
+            echo "The native compile job above still proves that the Android project can be generated and assembled."
+            exit 1
           fi
       - name: Link or create EAS project
-        if: steps.eas-auth.outputs.available == 'true'
         run: npx eas-cli@latest init --account kashyao_07 --force --non-interactive
       - name: Build Android APK with EAS
-        if: steps.eas-auth.outputs.available == 'true'
         run: npx eas-cli@latest build --platform android --profile "$EAS_PROFILE" --non-interactive --wait
