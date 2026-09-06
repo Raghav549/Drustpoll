@@ -11,17 +11,21 @@
       "bundler": "metro",
       "output": "static"
     },
-    "plugins": ["expo-router", "expo-splash-screen"],
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F5F6F2",
+          "resizeMode": "contain"
+        }
+      ]
+    ],
     "experiments": { "typedRoutes": true },
     "ios": { "supportsTablet": true },
     "android": {
       "package": "com.drustpoll.app",
-      "versionCode": 1,
-      "edgeToEdgeEnabled": true
-    },
-    "splash": {
-      "backgroundColor": "#F5F6F2",
-      "resizeMode": "contain"
+      "versionCode": 1
     }
   }
 }
