@@ -7,7 +7,7 @@ const localeCodes=[...core.matchAll(/\{code:'([^']+)'/g)].map(m=>m[1]);
 const packMatch=core.match(/const packs:Record<string,Dictionary>=\{([\s\S]*?)\n\};\nexport function t/);
 const packsText=packMatch?.[1]??'';
 const packCodes=new Set([...packsText.matchAll(/\n\s{1,4}([a-zA-Z-]+):\{/g)].map(m=>m[1]));
-const missing=localeCodes.filter(c=>c!=='en'&&!packCodes.has(c));
+const missing=localeCodes.filter(c=>!packCodes.has(c));
 if(missing.length){
   console.log(`i18n locale registry: ${localeCodes.length} locales; explicit translated packs: ${packCodes.size}.`);
   console.log(`Advisory fallback locales: ${missing.join(', ')}`);
