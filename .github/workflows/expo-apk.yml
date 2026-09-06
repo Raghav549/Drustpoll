@@ -23,6 +23,7 @@ jobs:
   native-compile:
     name: Native Android compile gate
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -53,6 +54,7 @@ jobs:
     name: EAS installable APK
     needs: native-compile
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: write
     env:
