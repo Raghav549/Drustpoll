@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { router, usePathname } from 'expo-router';
 import { AuthState } from './auth-contract';
-import { getAuthState, signOut as apiSignOut } from './auth-client';
+import { getAuthState, signOut as apiSignOut } from './auth-client-runtime';
 
 type AuthContextValue = AuthState & { refresh: () => Promise<void>; signOut: () => Promise<void> };
 const AuthContext = createContext<AuthContextValue | null>(null);
