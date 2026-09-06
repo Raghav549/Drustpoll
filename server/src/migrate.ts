@@ -7,23 +7,31 @@ const files=[
 
 async function normalizeLegacySchema(client: any){
   await client.query(`DO $$ BEGIN
+    IF to_regclass('public.profiles') IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='display_name') THEN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='name') THEN
+        ALTER TABLE profiles ADD COLUMN display_name text NOT NULL DEFAULT '';
+        UPDATE profiles SET display_name=name WHERE display_name='';
+      ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='full_name') THEN
+        ALTER TABLE profiles ADD COLUMN display_name text NOT NULL DEFAULT '';
+        UPDATE profiles SET display_name=full_name WHERE display_name='';
+      ELSE
+        ALTER TABLE profiles ADD COLUMN display_name text NOT NULL DEFAULT '';
+      END IF;
+    END IF;
+  END $$;`);
+  await client.query(`DO $$ BEGIN
     IF to_regclass('public.content_features') IS NOT NULL THEN
       ALTER TABLE content_features ADD COLUMN IF NOT EXISTS id uuid;
       ALTER TABLE content_features ADD COLUMN IF NOT EXISTS asset_id uuid;
       ALTER TABLE content_features ADD COLUMN IF NOT EXISTS post_id uuid;
-      ALTER TABLE content_features ADD COLUMN IF NOT EXISTS modality text;
-      ALTER TABLE content_features ADD COLUMN IF NOT EXISTS model_version text;
-      ALTER TABLE content_features ADD COLUMN IF NOT EXISTS feature_json jsonb;
-      ALTER TABLE content_features ADD COLUMN IF NOT EXISTS status text;
-      ALTER TABLE content_features ADD COLUMN IF NOT EXISTS created_at timestamptz;
-      ALTER TABLE content_features ADD COLUMN IF NOT EXISTS updated_at timestamptz;
+      ALTER TABLE content_features ADD COLUMN IF NOT EXISTS modality text DEFAULT 'text';
+      ALTER TABLE content_features ADD COLUMN IF NOT EXISTS model_version text DEFAULT 'legacy';
+      ALTER TABLE content_features ADD COLUMN IF NOT EXISTS feature_json jsonb DEFAULT '{}'::jsonb;
+      ALTER TABLE content_features ADD COLUMN IF NOT EXISTS status text DEFAULT 'ready';
+      ALTER TABLE content_features ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+      ALTER TABLE content_features ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
       ALTER TABLE content_features ALTER COLUMN id SET DEFAULT gen_random_uuid();
-      ALTER TABLE content_features ALTER COLUMN modality SET DEFAULT 'text';
-      ALTER TABLE content_features ALTER COLUMN model_version SET DEFAULT 'legacy';
-      ALTER TABLE content_features ALTER COLUMN feature_json SET DEFAULT '{}'::jsonb;
-      ALTER TABLE content_features ALTER COLUMN status SET DEFAULT 'ready';
-      ALTER TABLE content_features ALTER COLUMN created_at SET DEFAULT now();
-      ALTER TABLE content_features ALTER COLUMN updated_at SET DEFAULT now();
       UPDATE content_features SET modality=COALESCE(modality,'text'), model_version=COALESCE(model_version,'legacy'), feature_json=COALESCE(feature_json,'{}'::jsonb), status=COALESCE(status,'ready'), id=COALESCE(id,gen_random_uuid()), created_at=COALESCE(created_at,now()), updated_at=COALESCE(updated_at,now());
       CREATE INDEX IF NOT EXISTS content_features_post_idx ON content_features(post_id,modality,updated_at DESC);
       CREATE INDEX IF NOT EXISTS content_features_asset_idx ON content_features(asset_id,modality,updated_at DESC);
@@ -31,13 +39,16 @@ async function normalizeLegacySchema(client: any){
   END $$;`);
   await client.query(`DO $$ BEGIN
     IF to_regclass('public.security_events') IS NOT NULL THEN
+      ALTER TABLE security_events ADD COLUMN IF NOT EXISTS user_id uuid;
       ALTER TABLE security_events ADD COLUMN IF NOT EXISTS actor_id uuid;
-      ALTER TABLE security_events ADD COLUMN IF NOT EXISTS event_type text;
+      ALTER TABLE security_events ADD COLUMN IF NOT EXISTS event_type text DEFAULT 'unknown';
       ALTER TABLE security_events ADD COLUMN IF NOT EXISTS resource_type text;
       ALTER TABLE security_events ADD COLUMN IF NOT EXISTS resource_id text;
-      ALTER TABLE security_events ADD COLUMN IF NOT EXISTS metadata jsonb;
-      ALTER TABLE security_events ADD COLUMN IF NOT EXISTS created_at timestamptz;
+      ALTER TABLE security_events ADD COLUMN IF NOT EXISTS ip_hash text;
+      ALTER TABLE security_events ADD COLUMN IF NOT EXISTS user_agent_hash text;
+      ALTER TABLE security_events ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}'::jsonb;
       ALTER TABLE security_events ADD COLUMN IF NOT EXISTS success boolean;
+      ALTER TABLE security_events ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
       UPDATE security_events SET actor_id=COALESCE(actor_id,user_id), event_type=COALESCE(event_type,'unknown'), metadata=COALESCE(metadata,'{}'::jsonb), created_at=COALESCE(created_at,now());
       CREATE INDEX IF NOT EXISTS security_events_actor_time_idx ON security_events(actor_id,created_at DESC);
       CREATE INDEX IF NOT EXISTS security_events_type_time_idx ON security_events(event_type,created_at DESC);
