@@ -2,7 +2,16 @@ name: Expo Android APK
 
 on:
   push:
+    branches: [main]
     paths:
+      - 'app/**'
+      - 'src/**'
+      - 'assets/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'app.json'
+      - 'eas.json'
+      - 'scripts/**'
       - '.github/workflows/expo-apk.yml'
   workflow_dispatch:
     inputs:
@@ -31,6 +40,8 @@ jobs:
           node-version: 24
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Validate EAS/Expo source configuration
+        run: node scripts/eas-check-config.mjs
       - name: Validate resolved Expo config
         run: npx expo config --type public
       - name: Expo Doctor
@@ -66,6 +77,8 @@ jobs:
           node-version: 24
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Validate EAS/Expo source configuration
+        run: node scripts/eas-check-config.mjs
       - name: Validate resolved Expo config
         run: npx expo config --type public
       - name: Expo Doctor
@@ -78,26 +91,13 @@ jobs:
         run: |
           if [ -z "$EXPO_TOKEN" ]; then
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "EAS token is not configured; skipping cloud EAS build. The native job still produces an installable debug APK artifact."
+            echo "EAS token is not configured; cloud EAS build will be skipped."
           else
             echo "available=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Link or create EAS project
         if: steps.eas-auth.outputs.available == 'true'
         run: npx eas-cli@latest init --account kashyao_07 --force --non-interactive
-      - name: Persist EAS project link
-        if: steps.eas-auth.outputs.available == 'true'
-        shell: bash
-        run: |
-          if git diff --quiet -- app.json; then
-            echo "EAS project link already committed"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app.json
-          git commit -m "build: persist EAS project link"
-          git push origin HEAD:main
       - name: Build Android APK with EAS
         if: steps.eas-auth.outputs.available == 'true'
         run: npx eas-cli@latest build --platform android --profile "$EAS_PROFILE" --non-interactive --wait
