@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { pool } from './db.js';
 
 const files=[
-  '001_auth.sql','002_social_commerce.sql','003_platform_foundation.sql','004_discovery_search.sql','005_payment_core.sql','006_safety_controls.sql','007_media_pipeline.sql','008_recommendation_events.sql','009_reels_watch_sessions.sql','010_ranking_experiments.sql','011_multimodal_features.sql','012_feature_workers.sql','013_rank_training_features.sql','014_e2ee_checkout_security.sql','015_commerce_events.sql','016_media_job_leases.sql','017_feed_events_durable.sql','018_privacy_accessibility.sql','019_security_audit.sql','020_commerce_category.sql','021_discovery_retrieval.sql','022_design_observability.sql','023_social_surface_completion.sql','024_discovery_reels_completion.sql','025_profile_surface_completion.sql','026_creator_messaging_completion.sql','027_notification_market_completion.sql','028_market_indexes.sql','029_notification_backfill.sql','030_market_variants_storefront.sql','031_commerce_advanced.sql','032_commerce_operational.sql','033_commerce_safety_invariants.sql','034_commerce_aggregates.sql','035_commerce_fallbacks.sql','036_commerce_seed_safety.sql','037_commerce_payment_runtime.sql','038_commerce_order_receipts.sql','039_checkout_state.sql','040_checkout_addresses_and_delivery.sql','041_checkout_methods.sql','042_checkout_coupons.sql','043_checkout_payment_attempts.sql','044_settings_safety_privacy_completion.sql','045_account_experience_controls.sql','046_safety_reporting_completion.sql','047_safety_uniqueness.sql','048_settings_safety_completion.sql','049_settings_safety_runtime.sql','050_safety_runtime_indexes.sql','051_seller_commerce_controls.sql','052_seller_ads_runtime.sql','053_settings_safety_advertising_runtime.sql','054_final_runtime_hardening.sql','055_variant_cart_order_runtime.sql','056_variant_constraints.sql','057_settings_safety_finalization.sql','058_settings_safety_data.sql','059_auth_email_delivery.sql','060_auth_indexes.sql','061_existing_schema_compat.sql','062_schema_compatibility_hardening.sql','063_auth_device_integrity.sql','064_auth_session_family.sql'
+  '001_auth.sql','002_social_commerce.sql','003_platform_foundation.sql','004_discovery_search.sql','005_payment_core.sql','006_safety_controls.sql','007_media_pipeline.sql','008_recommendation_events.sql','009_reels_watch_sessions.sql','010_ranking_experiments.sql','011_multimodal_features.sql','012_feature_workers.sql','013_rank_training_features.sql','014_e2ee_checkout_security.sql','015_commerce_events.sql','016_media_job_leases.sql','017_feed_events_durable.sql','018_privacy_accessibility.sql','019_security_audit.sql','020_commerce_category.sql','021_discovery_retrieval.sql','022_design_observability.sql','023_social_surface_completion.sql','024_discovery_reels_completion.sql','025_profile_surface_completion.sql','026_creator_messaging_completion.sql','027_notification_market_completion.sql','028_market_indexes.sql','029_notification_backfill.sql','030_market_variants_storefront.sql','031_commerce_advanced.sql','032_commerce_operational.sql','033_commerce_safety_invariants.sql','034_commerce_aggregates.sql','035_commerce_fallbacks.sql','036_commerce_seed_safety.sql','037_commerce_payment_runtime.sql','038_commerce_order_receipts.sql','039_checkout_state.sql','040_checkout_addresses_and_delivery.sql','041_checkout_methods.sql','042_checkout_coupons.sql','043_checkout_payment_attempts.sql','044_settings_safety_privacy_completion.sql','045_account_experience_controls.sql','046_safety_reporting_completion.sql','047_safety_uniqueness.sql','048_settings_safety_completion.sql','049_settings_safety_runtime.sql','050_safety_runtime_indexes.sql','051_seller_commerce_controls.sql','052_seller_ads_runtime.sql','053_settings_safety_advertising_runtime.sql','054_final_runtime_hardening.sql','055_variant_cart_order_runtime.sql','056_variant_constraints.sql','057_settings_safety_finalization.sql','058_settings_safety_data.sql','059_auth_email_delivery.sql','060_auth_indexes.sql','061_existing_schema_compat.sql','062_schema_compatibility_hardening.sql','063_auth_device_integrity.sql','064_auth_session_family.sql','065_auth_session_rotation.sql'
 ];
 
 async function ensureCompatibility(client: any){
@@ -12,7 +12,6 @@ async function ensureCompatibility(client: any){
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS display_name text NOT NULL DEFAULT '';
     END IF;
   END $$;`);
-
   await client.query(`DO $$ BEGIN
     IF to_regclass('public.content_features') IS NOT NULL THEN
       ALTER TABLE content_features ADD COLUMN IF NOT EXISTS id uuid;
@@ -36,7 +35,6 @@ async function ensureCompatibility(client: any){
       CREATE INDEX IF NOT EXISTS content_features_asset_idx ON content_features(asset_id,modality,updated_at DESC);
     END IF;
   END $$;`);
-
   await client.query(`DO $$ BEGIN
     IF to_regclass('public.security_events') IS NOT NULL THEN
       ALTER TABLE security_events ADD COLUMN IF NOT EXISTS user_id uuid;
@@ -54,7 +52,6 @@ async function ensureCompatibility(client: any){
       CREATE INDEX IF NOT EXISTS security_events_type_time_idx ON security_events(event_type,created_at DESC);
     END IF;
   END $$;`);
-
   await client.query(`DO $$ BEGIN
     IF to_regclass('public.privacy_consents') IS NOT NULL THEN
       ALTER TABLE privacy_consents ADD COLUMN IF NOT EXISTS consent_type text DEFAULT 'general';
@@ -66,16 +63,10 @@ async function ensureCompatibility(client: any){
       UPDATE privacy_consents SET consent_type=COALESCE(consent_type,'general'), version=COALESCE(version,'1'), granted=COALESCE(granted,false), created_at=COALESCE(created_at,now());
     END IF;
   END $$;`);
-
   await client.query(`DO $$ BEGIN
     IF to_regclass('public.devices') IS NOT NULL AND to_regclass('public.users') IS NOT NULL THEN
       DELETE FROM devices d WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id=d.user_id);
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint c
-        WHERE c.conrelid='public.devices'::regclass
-          AND c.contype='f'
-          AND c.conname='devices_user_id_fkey'
-      ) THEN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid='public.devices'::regclass AND c.contype='f' AND c.conname='devices_user_id_fkey') THEN
         ALTER TABLE devices ADD CONSTRAINT devices_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
       END IF;
     END IF;
@@ -88,7 +79,7 @@ async function main(){
     await client.query('CREATE TABLE IF NOT EXISTS schema_migrations(version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
     for(const file of files){
       const exists=await client.query('SELECT 1 FROM schema_migrations WHERE version=$1',[file]);
-      if(exists.rowCount) continue;
+      if(exists.rowCount)continue;
       await client.query('BEGIN');
       try{
         await ensureCompatibility(client);
@@ -97,15 +88,8 @@ async function main(){
         await client.query('INSERT INTO schema_migrations(version) VALUES($1) ON CONFLICT DO NOTHING',[file]);
         await client.query('COMMIT');
         console.log(`applied ${file}`);
-      }catch(error){
-        await client.query('ROLLBACK');
-        throw new Error(`Migration ${file} failed: ${error instanceof Error ? error.message : String(error)}`);
-      }
+      }catch(error){await client.query('ROLLBACK');throw new Error(`Migration ${file} failed: ${error instanceof Error?error.message:String(error)}`);}
     }
-  }finally{
-    client.release();
-    await pool.end();
-  }
+  }finally{client.release();await pool.end();}
 }
-
 main().catch(error=>{console.error(error);process.exit(1);});
