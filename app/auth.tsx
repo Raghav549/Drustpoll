@@ -5,183 +5,23 @@ import { signIn, signUp } from '../src/core/auth/auth-client-runtime';
 import { api } from '../src/api/client';
 import { useI18n } from '../src/i18n/provider';
 import { BrandMark } from '../src/ui/BrandMark';
-import { colors, radius, spacing, touch, type, motion } from '../src/ui/theme';
+import { colors, radius, touch, motion } from '../src/ui/theme';
 import { Icon } from '../src/ui/icons';
 
 type Mode='signin'|'signup'|'forgot';
 type SignupStep=1|2|3;
-
 type FieldProps={label:string;value:string;onChange:(v:string)=>void;placeholder:string;secureTextEntry?:boolean;keyboardType?:'email-address'|'phone-pad';right?:ReactNode};
-function Field({label,value,onChange,placeholder,secureTextEntry,keyboardType,right}:FieldProps){
- return <View style={s.field}>
-   <Text style={s.label}>{label}</Text>
-   <View style={s.fieldRow}>
-     <TextInput value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={colors.faint} style={s.input} secureTextEntry={secureTextEntry} keyboardType={keyboardType} autoCapitalize={secureTextEntry?'none':'sentences'} accessibilityLabel={label} returnKeyType="next"/>
-     {right}
-   </View>
- </View>;
-}
-
-function friendlyError(error:unknown,t:(key:string)=>string){
- const message=error instanceof Error?error.message:'';
- if(/foreign key|devices_|constraint|postgres|sql|database/i.test(message)) return t('error');
- if(/identifier already in use/i.test(message)) return 'That username or contact is already in use.';
- if(/invalid credentials/i.test(message)) return 'That account or password is not correct.';
- if(/too many/i.test(message)) return 'Too many attempts. Try again shortly.';
- if(/password/i.test(message)&&message.length<120) return message;
- return message||t('error');
-}
+function Field({label,value,onChange,placeholder,secureTextEntry,keyboardType,right}:FieldProps){return <View style={s.field}><Text style={s.label}>{label}</Text><View style={s.fieldRow}><TextInput value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={colors.faint} style={s.input} secureTextEntry={secureTextEntry} keyboardType={keyboardType} autoCapitalize={secureTextEntry?'none':'sentences'} accessibilityLabel={label} returnKeyType="next"/>{right}</View></View>;}
+function friendlyError(error:unknown,t:(key:string)=>string){const message=error instanceof Error?error.message:'';if(/foreign key|devices_|constraint|postgres|sql|database/i.test(message))return t('error');if(/identifier already in use/i.test(message))return 'That username or contact is already in use.';if(/invalid credentials/i.test(message))return 'That account or password is not correct.';if(/too many/i.test(message))return 'Too many attempts. Try again shortly.';if(/password/i.test(message)&&message.length<120)return message;return message||t('error');}
 
 export default function AuthScreen(){
- const {t}=useI18n();
- const [mode,setMode]=useState<Mode>('signin');
- const [step,setStep]=useState<SignupStep>(1);
- const [identifier,setIdentifier]=useState('');
- const [username,setUsername]=useState('');
- const [displayName,setDisplayName]=useState('');
- const [email,setEmail]=useState('');
- const [phone,setPhone]=useState('');
- const [password,setPassword]=useState('');
- const [showPassword,setShowPassword]=useState(false);
- const [contactMode,setContactMode]=useState<'email'|'phone'>('email');
- const [busy,setBusy]=useState(false);
- const [error,setError]=useState('');
- const [notice,setNotice]=useState('');
- const motionValue=useRef(new Animated.Value(1)).current;
- const [slide,setSlide]=useState(0);
-
- const animateTo=(next:SignupStep)=>{
-   const direction=next>step?1:-1;
-   setSlide(direction);
-   motionValue.setValue(0);
-   setStep(next);
-   Animated.parallel([
-     Animated.timing(motionValue,{toValue:1,duration:motion.standard,easing:Easing.out(Easing.cubic),useNativeDriver:true}),
-   ]).start();
- };
+ const{t}=useI18n();const[mode,setMode]=useState<Mode>('signin');const[step,setStep]=useState<SignupStep>(1);const[identifier,setIdentifier]=useState('');const[username,setUsername]=useState('');const[displayName,setDisplayName]=useState('');const[email,setEmail]=useState('');const[phone,setPhone]=useState('');const[password,setPassword]=useState('');const[showPassword,setShowPassword]=useState(false);const[contactMode,setContactMode]=useState<'email'|'phone'>('email');const[busy,setBusy]=useState(false);const[error,setError]=useState('');const[notice,setNotice]=useState('');const[motionValue]=useState(()=>new Animated.Value(1));const[slide,setSlide]=useState(0);
+ const animateTo=(next:SignupStep)=>{const direction=next>step?1:-1;setSlide(direction);motionValue.setValue(0);setStep(next);Animated.timing(motionValue,{toValue:1,duration:motion.standard,easing:Easing.out(Easing.cubic),useNativeDriver:true}).start();};
  const reset=()=>{setError('');setNotice('');};
  const toggleMode=(next:Mode)=>{reset();setMode(next);setStep(1);motionValue.setValue(1);};
- const validateStep=()=>{
-   if(step===1){if(!displayName.trim())return 'Enter your name.';if(!/^[a-z0-9_]{3,30}$/i.test(username.trim()))return 'Choose a username with 3–30 letters, numbers or _.';return '';}
-   if(step===2){if(contactMode==='email'&&!email.trim())return 'Enter your email.';if(contactMode==='email'&&!/^\S+@\S+\.\S+$/.test(email.trim()))return 'Enter a valid email.';if(contactMode==='phone'&&!/^\+?[0-9\s()-]{8,20}$/.test(phone.trim()))return 'Enter a valid phone number.';return '';}
-   if(password.length<12)return 'Use at least 12 characters.';
-   return '';
- };
- async function submit(){
-   reset();
-   if(mode==='forgot'){
-     if(!identifier.trim())return setError('Enter your account.');
-     setBusy(true);
-     try{await api('/v1/auth/password/forgot',{method:'POST',body:JSON.stringify({identifier:identifier.trim()})});setNotice('If the account exists, recovery instructions were sent.');}
-     catch(e){setError(friendlyError(e,t));}
-     finally{setBusy(false);}
-     return;
-   }
-   if(mode==='signup'&&step<3){const validation=validateStep();if(validation)return setError(validation);animateTo((step+1) as SignupStep);return;}
-   const validation=mode==='signup'?validateStep():(!identifier.trim()||!password?'Enter your account and password.':'');
-   if(validation)return setError(validation);
-   setBusy(true);
-   try{
-     if(mode==='signin'){
-       await signIn(identifier.trim(),password);
-       router.replace('/');
-     }else{
-       const destination=contactMode==='email'?email.trim():phone.trim();
-       const data=await signUp({username:username.trim(),displayName:displayName.trim(),password,email:contactMode==='email'?destination:undefined,phone:contactMode==='phone'?destination:undefined});
-       if(data?.verificationRequired!==false) router.push({pathname:'/verify-otp',params:{destination,purpose:contactMode==='email'?'verify_email':'verify_phone'}});
-       else router.replace('/');
-     }
-   }catch(e){setError(friendlyError(e,t));}
-   finally{setBusy(false);}
- }
-
+ const validateStep=()=>{if(step===1){if(!displayName.trim())return 'Enter your name.';if(!/^[a-z0-9_]{3,30}$/i.test(username.trim()))return 'Choose a username with 3–30 letters, numbers or _.';return '';}if(step===2){if(contactMode==='email'&&!email.trim())return 'Enter your email.';if(contactMode==='email'&&!/^\S+@\S+\.\S+$/.test(email.trim()))return 'Enter a valid email.';if(contactMode==='phone'&&!/^\+?[0-9\s()-]{8,20}$/.test(phone.trim()))return 'Enter a valid phone number.';return '';}if(password.length<12)return 'Use at least 12 characters.';return '';};
+ async function submit(){reset();if(mode==='forgot'){if(!identifier.trim())return setError('Enter your account.');setBusy(true);try{await api('/v1/auth/password/forgot',{method:'POST',body:JSON.stringify({identifier:identifier.trim()})});setNotice('If the account exists, recovery instructions were sent.');}catch(e){setError(friendlyError(e,t));}finally{setBusy(false);}return;}if(mode==='signup'&&step<3){const validation=validateStep();if(validation)return setError(validation);animateTo((step+1) as SignupStep);return;}const validation=mode==='signup'?validateStep():(!identifier.trim()||!password?'Enter your account and password.':'');if(validation)return setError(validation);setBusy(true);try{if(mode==='signin'){await signIn(identifier.trim(),password);router.replace('/');}else{const destination=contactMode==='email'?email.trim():phone.trim();const data=await signUp({username:username.trim(),displayName:displayName.trim(),password,email:contactMode==='email'?destination:undefined,phone:contactMode==='phone'?destination:undefined});if(data?.verificationRequired!==false)router.push({pathname:'/verify-otp',params:{destination,purpose:contactMode==='email'?'verify_email':'verify_phone'}});else router.replace('/');}}catch(e){setError(friendlyError(e,t));}finally{setBusy(false);}}
  const panelTranslate=motionValue.interpolate({inputRange:[0,1],outputRange:[slide*34,0]});
- return <KeyboardAvoidingView style={s.screen} behavior={Platform.OS==='ios'?'padding':undefined}>
-   <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-     <View style={s.header}>
-       <BrandMark size={46}/>
-       <Pressable accessibilityRole="button" accessibilityLabel={t('language')} onPress={()=>router.push('/language')} style={({pressed})=>[s.language,pressed&&s.pressed]}>
-         <Text style={s.languageText}>{t('language')}</Text>
-       </Pressable>
-     </View>
-
-     {mode==='signup'?<View style={s.progress} accessibilityLabel={`Step ${step} of 3`}>
-       {[1,2,3].map(i=><View key={i} style={[s.dot,i===step&&s.dotActive]}/>) }
-     </View>:null}
-
-     <Animated.View style={[s.panel,{opacity:motionValue,transform:[{translateX:panelTranslate}]}]}>
-       <Text style={s.title}>{mode==='signin'?'Sign in':mode==='forgot'?'Reset password':'Create account'}</Text>
-
-       {mode==='signup'&&step===1?<>
-         <Field label={t('name')} value={displayName} onChange={setDisplayName} placeholder="Your name"/>
-         <Field label={t('username')} value={username} onChange={setUsername} placeholder="username"/>
-       </>:null}
-
-       {mode==='signup'&&step===2?<>
-         <View style={s.choiceRow}>
-           <Pressable accessibilityRole="radio" accessibilityState={{selected:contactMode==='email'}} onPress={()=>setContactMode('email')} style={[s.choice,contactMode==='email'&&s.choiceActive]}><Text style={[s.choiceText,contactMode==='email'&&s.choiceTextActive]}>{t('email')}</Text></Pressable>
-           <Pressable accessibilityRole="radio" accessibilityState={{selected:contactMode==='phone'}} onPress={()=>setContactMode('phone')} style={[s.choice,contactMode==='phone'&&s.choiceActive]}><Text style={[s.choiceText,contactMode==='phone'&&s.choiceTextActive]}>{t('phone')}</Text></Pressable>
-         </View>
-         {contactMode==='email'?<Field label={t('email')} value={email} onChange={setEmail} placeholder="name@example.com" keyboardType="email-address"/>:<Field label={t('phone')} value={phone} onChange={setPhone} placeholder="Phone number" keyboardType="phone-pad"/>}
-       </>:null}
-
-       {mode==='signup'&&step===3?<Field label={t('password')} value={password} onChange={setPassword} placeholder="Password" secureTextEntry={!showPassword} right={<Pressable accessibilityRole="button" accessibilityLabel={showPassword?'Hide password':'Show password'} onPress={()=>setShowPassword(v=>!v)} hitSlop={10}><Icon name={showPassword?'eyeOff':'eye'} size={20} color={colors.muted}/></Pressable>}/>:null}
-
-       {mode==='signin'||mode==='forgot'?<Field label={t('username')} value={identifier} onChange={setIdentifier} placeholder="Username, email or phone"/>:null}
-       {mode==='signin'?<Field label={t('password')} value={password} onChange={setPassword} placeholder="Password" secureTextEntry={!showPassword} right={<Pressable accessibilityRole="button" accessibilityLabel={showPassword?'Hide password':'Show password'} onPress={()=>setShowPassword(v=>!v)} hitSlop={10}><Icon name={showPassword?'eyeOff':'eye'} size={20} color={colors.muted}/></Pressable>}/>:null}
-
-       {error?<View style={s.error} accessibilityRole="alert"><Icon name="circleAlert" size={17} color={colors.danger}/><Text style={s.errorText}>{error}</Text></View>:null}
-       {notice?<View style={s.notice} accessibilityLiveRegion="polite"><Icon name="circleCheck" size={17} color={colors.success}/><Text style={s.noticeText}>{notice}</Text></View>:null}
-
-       <Pressable accessibilityRole="button" disabled={busy} onPress={()=>void submit()} style={({pressed})=>[s.primary,pressed&&s.pressed,busy&&s.disabled]}>
-         {busy?<ActivityIndicator color={colors.white}/>:<Text style={s.primaryText}>{mode==='signin'?t('signIn'):mode==='forgot'?t('continue'):step<3?t('continue'):t('create')}</Text>}
-       </Pressable>
-
-       {mode==='signup'&&step>1?<Pressable accessibilityRole="button" onPress={()=>{reset();animateTo((step-1) as SignupStep)}} style={s.back}><Text style={s.backText}>{t('back')}</Text></Pressable>:null}
-       {mode==='signin'?<Pressable accessibilityRole="button" onPress={()=>toggleMode('forgot')} style={s.forgot}><Text style={s.linkText}>Forgot password?</Text></Pressable>:null}
-       {mode==='forgot'?<Pressable accessibilityRole="button" onPress={()=>toggleMode('signin')} style={s.forgot}><Text style={s.linkText}>Back to sign in</Text></Pressable>:null}
-       <View style={s.switchRow}>
-         <Text style={s.switchMuted}>{mode==='signin'?'New to Drustpoll?':mode==='forgot'?'':'Already have an account?'}</Text>
-         {mode!=='forgot'?<Pressable onPress={()=>toggleMode(mode==='signin'?'signup':'signin')}><Text style={s.switchLink}>{mode==='signin'?t('create'):t('signIn')}</Text></Pressable>:null}
-       </View>
-     </Animated.View>
-   </ScrollView>
- </KeyboardAvoidingView>;
+ return <KeyboardAvoidingView style={s.screen} behavior={Platform.OS==='ios'?'padding':undefined}><ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}><View style={s.header}><BrandMark size={46}/><Pressable accessibilityRole="button" accessibilityLabel={t('language')} onPress={()=>router.push('/language')} style={({pressed})=>[s.language,pressed&&s.pressed]}><Text style={s.languageText}>{t('language')}</Text></Pressable></View>{mode==='signup'?<View style={s.progress} accessibilityLabel={`Step ${step} of 3`}>{[1,2,3].map(i=><View key={i} style={[s.dot,i===step&&s.dotActive]}/>)}</View>:null}<Animated.View style={[s.panel,{opacity:motionValue,transform:[{translateX:panelTranslate}]}]}><Text style={s.title}>{mode==='signin'?'Sign in':mode==='forgot'?'Reset password':'Create account'}</Text>{mode==='signup'&&step===1?<><Field label={t('name')} value={displayName} onChange={setDisplayName} placeholder="Your name"/><Field label={t('username')} value={username} onChange={setUsername} placeholder="username"/></>:null}{mode==='signup'&&step===2?<><View style={s.choiceRow}><Pressable accessibilityRole="radio" accessibilityState={{selected:contactMode==='email'}} onPress={()=>setContactMode('email')} style={[s.choice,contactMode==='email'&&s.choiceActive]}><Text style={[s.choiceText,contactMode==='email'&&s.choiceTextActive]}>{t('email')}</Text></Pressable><Pressable accessibilityRole="radio" accessibilityState={{selected:contactMode==='phone'}} onPress={()=>setContactMode('phone')} style={[s.choice,contactMode==='phone'&&s.choiceActive]}><Text style={[s.choiceText,contactMode==='phone'&&s.choiceTextActive]}>{t('phone')}</Text></Pressable></View>{contactMode==='email'?<Field label={t('email')} value={email} onChange={setEmail} placeholder="name@example.com" keyboardType="email-address"/>:<Field label={t('phone')} value={phone} onChange={setPhone} placeholder="Phone number" keyboardType="phone-pad"/>}</>:null}{mode==='signup'&&step===3?<Field label={t('password')} value={password} onChange={setPassword} placeholder="Password" secureTextEntry={!showPassword} right={<Pressable accessibilityRole="button" accessibilityLabel={showPassword?'Hide password':'Show password'} onPress={()=>setShowPassword(v=>!v)} hitSlop={10}><Icon name={showPassword?'eyeOff':'eye'} size={20} color={colors.muted}/></Pressable>}/>:null}{mode==='signin'||mode==='forgot'?<Field label={t('username')} value={identifier} onChange={setIdentifier} placeholder="Username, email or phone"/>:null}{mode==='signin'?<Field label={t('password')} value={password} onChange={setPassword} placeholder="Password" secureTextEntry={!showPassword} right={<Pressable accessibilityRole="button" accessibilityLabel={showPassword?'Hide password':'Show password'} onPress={()=>setShowPassword(v=>!v)} hitSlop={10}><Icon name={showPassword?'eyeOff':'eye'} size={20} color={colors.muted}/></Pressable>}/>:null}{error?<View style={s.error} accessibilityRole="alert"><Icon name="circleAlert" size={17} color={colors.danger}/><Text style={s.errorText}>{error}</Text></View>:null}{notice?<View style={s.notice} accessibilityLiveRegion="polite"><Icon name="circleCheck" size={17} color={colors.success}/><Text style={s.noticeText}>{notice}</Text></View>:null}<Pressable accessibilityRole="button" disabled={busy} onPress={()=>void submit()} style={({pressed})=>[s.primary,pressed&&s.pressed,busy&&s.disabled]}>{busy?<ActivityIndicator color={colors.white}/>:<Text style={s.primaryText}>{mode==='signin'?t('signIn'):mode==='forgot'?t('continue'):step<3?t('continue'):t('create')}</Text>}</Pressable>{mode==='signup'&&step>1?<Pressable accessibilityRole="button" onPress={()=>{reset();animateTo((step-1) as SignupStep)}} style={s.back}><Text style={s.backText}>{t('back')}</Text></Pressable>:null}{mode==='signin'?<Pressable accessibilityRole="button" onPress={()=>toggleMode('forgot')} style={s.forgot}><Text style={s.linkText}>{t('forgotPassword')}</Text></Pressable>:null}{mode==='forgot'?<Pressable accessibilityRole="button" onPress={()=>toggleMode('signin')} style={s.forgot}><Text style={s.linkText}>Back to sign in</Text></Pressable>:null}<View style={s.switchRow}><Text style={s.switchMuted}>{mode==='signin'?'New to Drustpoll?':mode==='forgot'?'':'Already have an account?'}</Text>{mode!=='forgot'?<Pressable onPress={()=>toggleMode(mode==='signin'?'signup':'signin')}><Text style={s.switchLink}>{mode==='signin'?t('create'):t('signIn')}</Text></Pressable>:null}</View></Animated.View></ScrollView></KeyboardAvoidingView>;
 }
-
-const s=StyleSheet.create({
- screen:{flex:1,backgroundColor:colors.canvas},
- scroll:{flexGrow:1,width:'100%',maxWidth:560,alignSelf:'center',paddingHorizontal:24,paddingTop:26,paddingBottom:28,justifyContent:'center'},
- header:{height:52,flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:28},
- language:{minHeight:touch.minimum,paddingHorizontal:16,borderRadius:radius.pill,borderWidth:1,borderColor:colors.line,backgroundColor:colors.surface,justifyContent:'center'},
- languageText:{fontSize:13,fontWeight:'800',color:colors.brand},
- progress:{height:4,flexDirection:'row',gap:6,marginBottom:28},
- dot:{height:3,flex:1,borderRadius:3,backgroundColor:colors.line},
- dotActive:{backgroundColor:colors.brand},
- panel:{width:'100%'},
- title:{fontSize:36,lineHeight:40,fontWeight:'900',letterSpacing:-1.3,color:colors.ink,marginBottom:26},
- field:{marginBottom:20},
- label:{fontSize:13,fontWeight:'800',color:colors.ink,marginBottom:7},
- fieldRow:{minHeight:52,borderBottomWidth:1,borderBottomColor:colors.line,flexDirection:'row',alignItems:'center'},
- input:{flex:1,color:colors.ink,fontSize:17,paddingHorizontal:0,paddingVertical:8},
- choiceRow:{flexDirection:'row',gap:8,marginBottom:20},
- choice:{minHeight:44,paddingHorizontal:18,borderRadius:radius.pill,borderWidth:1,borderColor:colors.line,backgroundColor:colors.surface,alignItems:'center',justifyContent:'center'},
- choiceActive:{backgroundColor:colors.brand,borderColor:colors.brand},
- choiceText:{fontSize:13,fontWeight:'800',color:colors.muted},
- choiceTextActive:{color:colors.white},
- error:{minHeight:42,paddingHorizontal:12,borderRadius:10,backgroundColor:colors.dangerSoft,flexDirection:'row',gap:8,alignItems:'center',marginBottom:14},
- errorText:{flex:1,color:colors.danger,fontSize:12.5,lineHeight:17},
- notice:{minHeight:42,paddingHorizontal:12,borderRadius:10,backgroundColor:colors.successSoft,flexDirection:'row',gap:8,alignItems:'center',marginBottom:14},
- noticeText:{flex:1,color:colors.inkSoft,fontSize:12.5,lineHeight:17},
- primary:{height:54,borderRadius:radius.pill,backgroundColor:colors.brand,alignItems:'center',justifyContent:'center',marginTop:2},
- primaryText:{color:colors.white,fontSize:15,fontWeight:'900'},
- pressed:{opacity:.78,transform:[{scale:.99}]},
- disabled:{opacity:.55},
- back:{alignItems:'center',paddingVertical:14,minHeight:44},
- backText:{fontSize:13,fontWeight:'800',color:colors.brand},
- forgot:{alignSelf:'center',paddingVertical:14,minHeight:44,justifyContent:'center'},
- linkText:{fontSize:13,fontWeight:'800',color:colors.brand},
- switchRow:{flexDirection:'row',justifyContent:'center',gap:5,marginTop:10,minHeight:44,alignItems:'center'},
- switchMuted:{fontSize:13,color:colors.muted},
- switchLink:{fontSize:13,color:colors.brand,fontWeight:'900'},
-});
+const s=StyleSheet.create({screen:{flex:1,backgroundColor:colors.canvas},scroll:{flexGrow:1,width:'100%',maxWidth:560,alignSelf:'center',paddingHorizontal:24,paddingTop:26,paddingBottom:28,justifyContent:'center'},header:{height:52,flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:28},language:{minHeight:touch.minimum,paddingHorizontal:16,borderRadius:radius.pill,borderWidth:1,borderColor:colors.line,backgroundColor:colors.surface,justifyContent:'center'},languageText:{fontSize:13,fontWeight:'800',color:colors.brand},progress:{height:4,flexDirection:'row',gap:6,marginBottom:28},dot:{height:3,flex:1,borderRadius:3,backgroundColor:colors.line},dotActive:{backgroundColor:colors.brand},panel:{width:'100%'},title:{fontSize:36,lineHeight:40,fontWeight:'900',letterSpacing:-1.3,color:colors.ink,marginBottom:26},field:{marginBottom:20},label:{fontSize:13,fontWeight:'800',color:colors.ink,marginBottom:7},fieldRow:{minHeight:52,borderBottomWidth:1,borderBottomColor:colors.line,flexDirection:'row',alignItems:'center'},input:{flex:1,color:colors.ink,fontSize:17,paddingHorizontal:0,paddingVertical:8},choiceRow:{flexDirection:'row',gap:8,marginBottom:20},choice:{minHeight:44,paddingHorizontal:18,borderRadius:radius.pill,borderWidth:1,borderColor:colors.line,backgroundColor:colors.surface,alignItems:'center',justifyContent:'center'},choiceActive:{backgroundColor:colors.brand,borderColor:colors.brand},choiceText:{fontSize:13,fontWeight:'800',color:colors.muted},choiceTextActive:{color:colors.white},error:{minHeight:42,paddingHorizontal:12,borderRadius:10,backgroundColor:colors.dangerSoft,flexDirection:'row',gap:8,alignItems:'center',marginBottom:14},errorText:{flex:1,color:colors.danger,fontSize:12.5,lineHeight:17},notice:{minHeight:42,paddingHorizontal:12,borderRadius:10,backgroundColor:colors.successSoft,flexDirection:'row',gap:8,alignItems:'center',marginBottom:14},noticeText:{flex:1,color:colors.inkSoft,fontSize:12.5,lineHeight:17},primary:{height:54,borderRadius:radius.pill,backgroundColor:colors.brand,alignItems:'center',justifyContent:'center',marginTop:2},primaryText:{color:colors.white,fontSize:15,fontWeight:'900'},pressed:{opacity:.78,transform:[{scale:.99}]},disabled:{opacity:.55},back:{alignItems:'center',paddingVertical:14,minHeight:44},backText:{fontSize:13,fontWeight:'800',color:colors.brand},forgot:{alignSelf:'center',paddingVertical:14,minHeight:44,justifyContent:'center'},linkText:{fontSize:13,fontWeight:'800',color:colors.brand},switchRow:{flexDirection:'row',justifyContent:'center',gap:5,marginTop:10,minHeight:44,alignItems:'center'},switchMuted:{fontSize:13,color:colors.muted},switchLink:{fontSize:13,color:colors.brand,fontWeight:'900'}});
