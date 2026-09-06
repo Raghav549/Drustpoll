@@ -1,9 +1,4 @@
--- 011 originally created content_features with a legacy single-row shape.
--- Keep it compatibility-safe: the newer polymorphic content_features table is
--- created by 012, so 011 must not create the incompatible legacy table first.
--- Keep the recommendation job/evaluation tables here because they are still
--- consumed by later migrations.
-
+-- Recommendation feature jobs depend on the recommendation experiment tables.
 CREATE TABLE IF NOT EXISTS recommendation_feature_jobs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   post_id uuid NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
