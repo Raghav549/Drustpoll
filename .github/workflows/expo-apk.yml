@@ -1,6 +1,9 @@
 name: Expo Android APK
 
 on:
+  push:
+    paths:
+      - '.github/workflows/expo-apk.yml'
   workflow_dispatch:
     inputs:
       profile:
@@ -12,6 +15,9 @@ on:
           - apk
           - preview
           - production
+
+env:
+  EAS_PROFILE: ${{ inputs.profile || 'apk' }}
 
 jobs:
   native-compile:
@@ -77,4 +83,4 @@ jobs:
           git commit -m "build: persist EAS project link"
           git push origin HEAD:main
       - name: Build Android APK with EAS
-        run: npx eas-cli@latest build --platform android --profile "${{ inputs.profile }}" --non-interactive --wait
+        run: npx eas-cli@latest build --platform android --profile "$EAS_PROFILE" --non-interactive --wait
