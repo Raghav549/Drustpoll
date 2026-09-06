@@ -11,16 +11,7 @@
       "bundler": "metro",
       "output": "static"
     },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#F5F6F2",
-          "resizeMode": "contain"
-        }
-      ]
-    ],
+    "plugins": ["expo-router"],
     "experiments": { "typedRoutes": true },
     "ios": { "supportsTablet": true },
     "android": {
