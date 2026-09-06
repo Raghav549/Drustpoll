@@ -1,6 +1,5 @@
--- 012 depends on the polymorphic content_features shape below.  Ensure the
--- target table exists here so fresh databases never inherit the legacy shape
--- from older migration revisions.
+-- Feature worker schema. Kept idempotent so a partially initialized database can
+-- safely retry this migration after a failed deployment.
 CREATE TABLE IF NOT EXISTS content_features (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   asset_id uuid REFERENCES media_assets(id) ON DELETE CASCADE,
@@ -14,8 +13,11 @@ CREATE TABLE IF NOT EXISTS content_features (
   CHECK(asset_id IS NOT NULL OR post_id IS NOT NULL),
   UNIQUE(asset_id,modality,model_version)
 );
-CREATE INDEX IF NOT EXISTS content_features_post_idx ON content_features(post_id,modality,updated_at DESC);
-CREATE INDEX IF NOT EXISTS content_features_asset_idx ON content_features(asset_id,modality,updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS content_features_post_idx
+  ON content_features(post_id,modality,updated_at DESC);
+CREATE INDEX IF NOT EXISTS content_features_asset_idx
+  ON content_features(asset_id,modality,updated_at DESC);
 
 CREATE TABLE IF NOT EXISTS content_feature_jobs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -32,4 +34,6 @@ CREATE TABLE IF NOT EXISTS content_feature_jobs (
   error_code text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS content_feature_jobs_queue_idx ON content_feature_jobs(status,available_at,created_at);
+
+CREATE INDEX IF NOT EXISTS content_feature_jobs_queue_idx
+  ON content_feature_jobs(status,available_at,created_at);
