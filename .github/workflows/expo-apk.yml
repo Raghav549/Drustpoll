@@ -46,6 +46,8 @@ jobs:
     name: EAS installable APK
     needs: native-compile
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
@@ -54,11 +56,25 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - name: Install dependencies and refresh lockfile
-        run: npm install --package-lock-only --no-audit --no-fund && npm install --no-audit --no-fund
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
       - name: Expo Doctor
         run: npx expo-doctor@latest
       - name: Typecheck
         run: npm run typecheck
+      - name: Link or create EAS project
+        run: npx eas-cli@latest init --account kashyao_07 --force --non-interactive
+      - name: Persist EAS project link
+        shell: bash
+        run: |
+          if git diff --quiet -- app.json; then
+            echo "EAS project link already committed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.json
+          git commit -m "build: persist EAS project link"
+          git push origin HEAD:main
       - name: Build Android APK with EAS
         run: npx eas-cli@latest build --platform android --profile "${{ inputs.profile }}" --non-interactive --wait
