@@ -46,6 +46,8 @@ jobs:
         run: npx expo config --type public
       - name: Expo Doctor
         run: npx expo-doctor@latest
+      - name: i18n locale coverage
+        run: node scripts/check-i18n-coverage.mjs
       - name: Typecheck
         run: npm run typecheck
       - name: Generate Android project
@@ -85,6 +87,8 @@ jobs:
         run: npx expo config --type public
       - name: Expo Doctor
         run: npx expo-doctor@latest
+      - name: i18n locale coverage
+        run: node scripts/check-i18n-coverage.mjs
       - name: Check cloud build credentials and API URL
         shell: bash
         run: |
