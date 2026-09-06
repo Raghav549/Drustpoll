@@ -1,0 +1,1 @@
+Temporary CI audit note: npm audit currently flags Nodemailer <=9.0.0, while the server package baseline is nodemailer ^8.0.11. Do not use npm audit fix --force automatically; it would jump to a breaking version per npm audit output. This file documents the CI discrepancy for investigation.
