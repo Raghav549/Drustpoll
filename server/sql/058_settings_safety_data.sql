@@ -3,7 +3,13 @@ CREATE INDEX IF NOT EXISTS data_requests_user_requested_idx ON data_requests(use
 CREATE INDEX IF NOT EXISTS content_report_evidence_report_created_idx ON content_report_evidence(report_id,created_at ASC);
 CREATE INDEX IF NOT EXISTS safety_cases_reporter_updated_idx ON safety_cases(reporter_id,updated_at DESC);
 
-ALTER TABLE privacy_consents ADD CONSTRAINT privacy_consents_version_nonempty CHECK(length(trim(version))>0);
-ALTER TABLE privacy_consents ADD CONSTRAINT privacy_consents_type_nonempty CHECK(length(trim(consent_type))>0);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='privacy_consents_version_nonempty') THEN
+    ALTER TABLE privacy_consents ADD CONSTRAINT privacy_consents_version_nonempty CHECK(length(trim(version))>0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='privacy_consents_type_nonempty') THEN
+    ALTER TABLE privacy_consents ADD CONSTRAINT privacy_consents_type_nonempty CHECK(length(trim(consent_type))>0);
+  END IF;
+END $$;
 
 INSERT INTO schema_migrations(version) VALUES('058_settings_safety_data.sql') ON CONFLICT DO NOTHING;
