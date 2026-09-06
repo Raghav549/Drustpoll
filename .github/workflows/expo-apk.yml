@@ -68,7 +68,6 @@ jobs:
     name: EAS installable APK
     runs-on: ubuntu-latest
     timeout-minutes: 47
-    needs: native-compile
     permissions:
       contents: write
     env:
