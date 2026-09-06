@@ -72,9 +72,21 @@ jobs:
         run: npx expo-doctor@latest
       - name: Typecheck
         run: npm run typecheck
+      - name: Check EAS credentials
+        id: eas-auth
+        shell: bash
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "EAS token is not configured; skipping cloud EAS build. The native job still produces an installable debug APK artifact."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Link or create EAS project
+        if: steps.eas-auth.outputs.available == 'true'
         run: npx eas-cli@latest init --account kashyao_07 --force --non-interactive
       - name: Persist EAS project link
+        if: steps.eas-auth.outputs.available == 'true'
         shell: bash
         run: |
           if git diff --quiet -- app.json; then
@@ -87,4 +99,5 @@ jobs:
           git commit -m "build: persist EAS project link"
           git push origin HEAD:main
       - name: Build Android APK with EAS
+        if: steps.eas-auth.outputs.available == 'true'
         run: npx eas-cli@latest build --platform android --profile "$EAS_PROFILE" --non-interactive --wait
