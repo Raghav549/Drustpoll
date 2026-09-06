@@ -1,8 +1,7 @@
--- Security audit schema. The auth migration already creates security_events
--- with user_id/event_type/success. Extend that shape rather than assuming a
--- newer actor_id-only shape is present.
+-- Security audit schema compatible with the auth migration's existing
+-- security_events table. Add missing fields before any dependent indexes.
 CREATE TABLE IF NOT EXISTS security_events(
- id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  user_id uuid REFERENCES users(id) ON DELETE SET NULL,
  actor_id uuid REFERENCES users(id) ON DELETE SET NULL,
  event_type text NOT NULL DEFAULT 'unknown',
