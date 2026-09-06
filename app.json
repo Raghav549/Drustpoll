@@ -24,7 +24,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "${EAS_PROJECT_ID}"
+        "projectId": "00000000-0000-0000-0000-000000000000"
       }
     }
   }
