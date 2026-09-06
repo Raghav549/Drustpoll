@@ -2,6 +2,7 @@
   "expo": {
     "name": "Drustpoll",
     "slug": "drustpoll",
+    "owner": "kashyao_07",
     "version": "0.1.0",
     "scheme": "drustpoll",
     "orientation": "default",
