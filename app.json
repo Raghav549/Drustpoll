@@ -21,6 +21,11 @@
     "android": {
       "package": "com.drustpoll.app",
       "versionCode": 1
+    },
+    "extra": {
+      "eas": {
+        "projectId": "${EAS_PROJECT_ID}"
+      }
     }
   }
 }
