@@ -1,9 +1,9 @@
-import {t as baseT} from './core';
-import {fullLocalePacks} from './full-locale-packs';
+import { t as baseT } from './core';
+import { fullLocalePacks } from './full-locale-packs';
+import { authText } from './auth-ui';
 
 type Vars=Record<string,string|number>;
 type Dictionary=Record<string,string>;
-
 const packs:Record<string,Dictionary>={
  gu:{welcome:'સ્વાગત છે',continue:'ચાલુ રાખો',back:'પાછા',create:'એકાઉન્ટ બનાવો',signIn:'સાઇન ઇન',name:'નામ',username:'યુઝરનેમ',email:'ઇમેલ',phone:'ફોન',password:'પાસવર્ડ',language:'ભાષા',chooseLanguage:'તમારી ભાષા પસંદ કરો',searchLanguages:'ભાષાઓ શોધો',applyLanguage:'આ ભાષાનો ઉપયોગ કરો',forgotPassword:'પાસવર્ડ ભૂલી ગયા?',home:'હોમ',explore:'એક્સપ્લોર',profile:'પ્રોફાઇલ',settings:'સેટિંગ્સ'},
  kn:{welcome:'ಸ್ವಾಗತ',continue:'ಮುಂದುವರಿಸಿ',back:'ಹಿಂದೆ',create:'ಖಾತೆ ರಚಿಸಿ',signIn:'ಸೈನ್ ಇನ್',name:'ಹೆಸರು',username:'ಬಳಕೆದಾರ ಹೆಸರು',email:'ಇಮೇಲ್',phone:'ಫೋನ್',password:'ಪಾಸ್‌ವರ್ಡ್',language:'ಭಾಷೆ',chooseLanguage:'ನಿಮ್ಮ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ',searchLanguages:'ಭಾಷೆಗಳನ್ನು ಹುಡುಕಿ',applyLanguage:'ಈ ಭಾಷೆಯನ್ನು ಬಳಸಿ',forgotPassword:'ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿರಾ?',home:'ಮುಖಪುಟ',explore:'ಎಕ್ಸ್‌ಪ್ಲೋರ್',profile:'ಪ್ರೊಫೈಲ್',settings:'ಸೆಟ್ಟಿಂಗ್‌ಗಳು'},
@@ -19,9 +19,9 @@ const packs:Record<string,Dictionary>={
  zh:{welcome:'欢迎',continue:'继续',back:'返回',create:'创建账户',signIn:'登录',name:'姓名',username:'用户名',email:'邮箱',phone:'手机号',password:'密码',language:'语言',chooseLanguage:'选择你的语言',searchLanguages:'搜索语言',applyLanguage:'使用此语言',forgotPassword:'忘记密码？',home:'首页',explore:'探索',profile:'个人资料',settings:'设置'},
  'zh-TW':{welcome:'歡迎',continue:'繼續',back:'返回',create:'建立帳戶',signIn:'登入',name:'姓名',username:'使用者名稱',email:'電子郵件',phone:'電話',password:'密碼',language:'語言',chooseLanguage:'選擇你的語言',searchLanguages:'搜尋語言',applyLanguage:'使用此語言',forgotPassword:'忘記密碼？',home:'首頁',explore:'探索',profile:'個人資料',settings:'設定'}
 };
-
+const AUTH_KEYS=new Set(['resetPassword','forgotPassword','newTo','already','backToSignIn','namePlaceholder','usernamePlaceholder','emailPlaceholder','phonePlaceholder','passwordPlaceholder','accountPlaceholder','weak','good','strong','password12','passwordUpper','passwordLower','passwordNumber','passwordSpecial','codeSentPhone','verifyPhone','verifyRecovery','verifiedContact','expiresIn','resendIn','otpNeverShare','enterName','invalidUsername','enterEmail','invalidEmail','invalidPhone','passwordMin','enterAccount','recoverySent','accountAndPassword','identifierInUse','invalidCredentials','rateLimited','step','of','showPassword','hidePassword']);
 export function localizedT(locale:string,key:string,vars?:Vars){
  const value=packs[locale]?.[key]??fullLocalePacks[locale]?.[key];
- if(value!==undefined)return value.replace(/\{(\w+)\}/g,(_,name)=>String(vars?.[name]??`{${name}}`));
- return baseT(locale,key,vars);
+ const resolved=value??(AUTH_KEYS.has(key)?authText(locale,key as Parameters<typeof authText>[1]):undefined)??baseT(locale,key,vars);
+ return resolved.replace(/\{(\w+)\}/g,(_,name)=>String(vars?.[name]??`{${name}}`));
 }
