@@ -3,24 +3,19 @@ import path from 'node:path';
 
 const root=process.cwd();
 const core=fs.readFileSync(path.join(root,'src/i18n/core.ts'),'utf8');
+const extended=fs.readFileSync(path.join(root,'src/i18n/extended.ts'),'utf8');
 const localeCodes=[...core.matchAll(/\{code:'([^']+)'/g)].map(m=>m[1]);
-
-// `en` is the base dictionary and lives as `const en`, while translated
-// dictionaries live under `packs`. Treat both as actual packs in CI.
+if(!localeCodes.length)throw new Error('No selectable locales found.');
 const packCodes=new Set(['en']);
-const packsStart=core.indexOf('const packs:Record<string,Dictionary>={');
-const exportAfterPacks=core.indexOf('\nexport function t',packsStart);
-if(packsStart<0||exportAfterPacks<0)throw new Error('Unable to locate i18n packs registry.');
-const packsText=core.slice(packsStart+'const packs:Record<string,Dictionary>={'.length,exportAfterPacks);
-for(const line of packsText.split(/\r?\n/)){
-  const match=line.match(/^\s*([A-Za-z][A-Za-z0-9-]*):\s*\{/);
-  if(match)packCodes.add(match[1]);
+for(const source of [core,extended]){
+  const start=source.indexOf('const packs:Record<string,Dictionary>={');
+  if(start<0)continue;
+  const end=source.indexOf('\n};',start);
+  const text=source.slice(start,end<0?source.length:end);
+  for(const m of text.matchAll(/(?:^|\n)\s*([A-Za-z][A-Za-z0-9-]*|'[^']+'):\s*\{/g))packCodes.add(m[1].replace(/^'|'$/g,''));
 }
-
-const required=['en','hi'];
-const missingRequired=required.filter(c=>!packCodes.has(c));
+const uncovered=localeCodes.filter(c=>!packCodes.has(c));
+if(uncovered.length)throw new Error(`Locales without an explicit translation pack: ${uncovered.join(', ')}`);
 const duplicates=[...new Set(localeCodes.filter((c,i,a)=>a.indexOf(c)!==i))];
 if(duplicates.length)throw new Error(`Duplicate locale codes: ${duplicates.join(', ')}`);
-if(missingRequired.length)throw new Error(`Missing required locale packs: ${missingRequired.join(', ')}`);
-
-console.log(`i18n CI validation OK: ${localeCodes.length} selectable locales; ${packCodes.size} explicit packs; required packs present: ${required.join(', ')}.`);
+console.log(`i18n CI validation OK: ${localeCodes.length} selectable locales; every locale has an explicit translation pack.`);
