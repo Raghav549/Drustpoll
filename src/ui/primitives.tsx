@@ -1,7 +1,7 @@
 import { PropsWithChildren, ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, type PressableProps, type TextInputProps, type TextProps, type ViewProps, View } from 'react-native';
-import { colors, elevation, radius, spacing, type } from './theme';
-import { useI18n } from '../src/i18n/provider';
+import { colors, elevation, radius, spacing, type, leading } from './theme';
+import { useI18n } from '../i18n/provider';
 
 export function Surface({ children, tone='default', style, ...props }: PropsWithChildren<ViewProps> & { tone?: 'default'|'soft'|'success'|'commerce'|'info'|'danger' }) { return <View {...props} style={[styles.surface, styles[tone], style]}>{children}</View>; }
 export function AppText({ children, variant='body', style, ...props }: TextProps & { variant?: 'display'|'title'|'body'|'muted'|'label'|'caption' }) { return <Text {...props} style={[styles.text, styles[variant], style]}>{children}</Text>; }
