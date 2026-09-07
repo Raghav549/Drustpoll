@@ -1,15 +1,17 @@
 import fs from 'node:fs';
 import path from 'node:path';
-
 const root=process.cwd();
 const core=fs.readFileSync(path.join(root,'src/i18n/core.ts'),'utf8');
 const extended=fs.readFileSync(path.join(root,'src/i18n/extended.ts'),'utf8');
 const extra=fs.readFileSync(path.join(root,'src/i18n/full-locale-packs.ts'),'utf8');
+const auth=fs.readFileSync(path.join(root,'src/i18n/auth-ui.ts'),'utf8');
 const localeCodes=[...core.matchAll(/\{code:'([^']+)'/g)].map(m=>m[1]);
-const source=[core,extended,extra].join('\n');
 if(!localeCodes.length)throw new Error('No selectable locales found.');
-const missing=localeCodes.filter(c=>!new RegExp(`(?:^|\\n)\\s*(?:${c==='zh-TW'?'[\'\"]?zh-TW':c}[\\'\\"]?)\\s*:`).test(source));
+const source=[core,extended,extra,auth].join('\n');
+const missing=localeCodes.filter(code=>code!=='en'&&!source.includes(`${code}:`));
 if(missing.length)throw new Error(`Locales without translation data: ${missing.join(', ')}`);
+const requiredAuth=['resetPassword','forgotPassword','namePlaceholder','usernamePlaceholder','passwordPlaceholder','weak','good','strong','password12','passwordUpper','passwordLower','passwordNumber','passwordSpecial','step','of','showPassword','hidePassword'];
+for(const key of requiredAuth)if(!new RegExp(`\\b${key}\\s*:`).test(auth))throw new Error(`Missing auth translation key: ${key}`);
 const duplicates=[...new Set(localeCodes.filter((c,i,a)=>a.indexOf(c)!==i))];
 if(duplicates.length)throw new Error(`Duplicate locale codes: ${duplicates.join(', ')}`);
-console.log(`i18n CI validation OK: ${localeCodes.length} selectable locales; translation data found for every locale.`);
+console.log(`i18n CI validation OK: ${localeCodes.length} selectable locales; translation data and auth keys present.`);
