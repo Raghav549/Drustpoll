@@ -126,4 +126,16 @@ jobs:
               --non-interactive
           done
       - name: Build Android APK with EAS
-        run: npx eas-cli@latest build --platform android --profile "$EAS_PROFILE" --non-interactive --wait
+        shell: bash
+        run: |
+          set +e
+          output=$(npx eas-cli@latest build --platform android --profile "$EAS_PROFILE" --non-interactive --wait 2>&1)
+          status=$?
+          printf '%s\n' "$output"
+          if [ "$status" -ne 0 ]; then
+            if printf '%s\n' "$output" | grep -qiE 'used its Android builds from the Free plan|Android builds from the Free plan this month|free plan.*builds'; then
+              echo "EAS Android build quota is exhausted; the native compile job provides the installable APK artifact for this commit."
+              exit 0
+            fi
+            exit "$status"
+          fi
