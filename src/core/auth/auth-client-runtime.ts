@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import { AuthState } from './auth-contract';
 
 const API_URL=(process.env.EXPO_PUBLIC_API_URL??'').replace(/\/$/,'');
+const REQUEST_TIMEOUT_MS=20000;
 let memoryToken:string|null=null;let memoryRefresh:string|null=null;
 async function secureStore(){if(Platform.OS==='web')return null;return import('expo-secure-store');}
 async function saveTokens(token:string,refreshToken?:string){memoryToken=token;if(refreshToken)memoryRefresh=refreshToken;const store=await secureStore();if(store){await store.setItemAsync('drustpoll.session',token);if(refreshToken)await store.setItemAsync('drustpoll.refresh',refreshToken);}}
@@ -13,7 +14,7 @@ async function request(path:string,init:RequestInit={},withAuth=true){
  if(!API_URL)throw new Error('Backend URL is not configured. Set EXPO_PUBLIC_API_URL to the deployed HTTPS API URL.');
  if(localNetworkHint(API_URL)&&Platform.OS==='android')throw new Error('This Android build cannot use a localhost or LAN HTTP backend. Configure EXPO_PUBLIC_API_URL with the deployed HTTPS Drustpoll API URL.');
  const token=withAuth?await getAccessToken():null;const headers=new Headers(init.headers);headers.set('Content-Type','application/json');if(token)headers.set('Authorization',`Bearer ${token}`);
- let response:Response;try{response=await fetch(`${API_URL}${path}`,{...init,headers,credentials:'include'});}catch(e){throw new Error(e instanceof Error?e.message:'Network request failed. Check the Drustpoll API URL and your connection.');}
+ const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),REQUEST_TIMEOUT_MS);let response:Response;try{response=await fetch(`${API_URL}${path}`,{...init,headers,credentials:'include',signal:controller.signal});}catch(e){if(e instanceof Error&&e.name==='AbortError')throw new Error('NETWORK_TIMEOUT');throw new Error(e instanceof Error?e.message:'Network request failed. Check the Drustpoll API URL and your connection.');}finally{clearTimeout(timer);}
  const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error??'Request failed');return data;
 }
 export async function signUp(input:{username:string;displayName:string;password:string;email?:string;phone?:string}){const data=await request('/v1/auth/signup',{method:'POST',body:JSON.stringify(input)},false);if(data.token)await saveTokens(data.token,data.refreshToken);return data;}
