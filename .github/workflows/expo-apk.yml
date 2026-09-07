@@ -2,7 +2,7 @@ name: Expo Android APK
 
 on:
   push:
-    branches: [main, fix/eas-apk-build]
+    branches: [main]
     paths:
       - 'app/**'
       - 'src/**'
@@ -14,25 +14,15 @@ on:
       - 'scripts/**'
       - '.github/workflows/expo-apk.yml'
   workflow_dispatch:
-    inputs:
-      profile:
-        description: EAS build profile
-        required: true
-        default: apk
-        type: choice
-        options:
-          - apk
-          - preview
-          - production
 
 env:
-  EAS_PROFILE: ${{ inputs.profile || 'apk' }}
+  EXPO_PUBLIC_API_URL: https://drustpoll.onrender.com
 
 jobs:
-  native-compile:
-    name: Native Android compile gate
+  android-release:
+    name: Standalone Android release APK
     runs-on: ubuntu-latest
-    timeout-minutes: 47
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -54,88 +44,26 @@ jobs:
         run: npx expo prebuild --platform android --clean --no-install
         env:
           EXPO_NO_GIT_STATUS: '1'
-      - name: Assemble debug APK
+          EXPO_PUBLIC_API_URL: https://drustpoll.onrender.com
+      - name: Verify production bundle configuration
+        run: |
+          test -f android/app/build.gradle
+          grep -q "com.drustpoll.app" android/app/build.gradle
+          echo "Android project generated for production package com.drustpoll.app"
+      - name: Assemble standalone release APK
         working-directory: android
-        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
-      - name: Upload debug APK
+        env:
+          EXPO_PUBLIC_API_URL: https://drustpoll.onrender.com
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+      - name: Verify APK contains embedded JS bundle
+        run: |
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          unzip -l "$APK" | grep -E 'assets/index\.android\.bundle|assets/index\.android.*\.bundle' >/dev/null
+          sha256sum "$APK"
+      - name: Upload standalone release APK
         uses: actions/upload-artifact@v4
         with:
-          name: drustpoll-android-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: drustpoll-android-release
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-
-  eas-build:
-    name: EAS installable APK
-    runs-on: ubuntu-latest
-    timeout-minutes: 47
-    permissions:
-      contents: write
-    env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      EXPO_PUBLIC_API_URL: https://drustpoll.onrender.com
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      - name: Validate EAS/Expo source configuration
-        run: node scripts/eas-check-config.mjs
-      - name: Validate resolved Expo config
-        run: npx expo config --type public
-      - name: Expo Doctor
-        run: npx expo-doctor@latest
-      - name: i18n locale coverage
-        run: node scripts/ci-i18n-coverage.mjs
-      - name: Check cloud build credentials and API URL
-        shell: bash
-        run: |
-          if [ -z "$EXPO_TOKEN" ]; then
-            echo "EXPO_TOKEN is required for the cloud EAS APK job."
-            echo "Add the Expo access token as repository secret EXPO_TOKEN."
-            exit 1
-          fi
-          case "$EXPO_PUBLIC_API_URL" in
-            https://*) ;;
-            *) echo "EXPO_PUBLIC_API_URL must use HTTPS for installed production Android builds."; exit 1 ;;
-          esac
-          echo "Public API URL configured: $EXPO_PUBLIC_API_URL"
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Link existing EAS project or create it
-        shell: bash
-        run: |
-          if [ -n "$EAS_PROJECT_ID" ]; then
-            npx eas-cli@latest init --id "$EAS_PROJECT_ID" --force --non-interactive
-          else
-            npx eas-cli@latest init --account kashyao_07 --force --non-interactive
-          fi
-        env:
-          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
-      - name: Sync public API URL to EAS environments
-        shell: bash
-        run: |
-          for environment in development preview production; do
-            npx eas-cli@latest env:set \
-              --name EXPO_PUBLIC_API_URL \
-              --value "$EXPO_PUBLIC_API_URL" \
-              --environment "$environment" \
-              --visibility plaintext \
-              --scope project \
-              --non-interactive
-          done
-      - name: Build Android APK with EAS
-        shell: bash
-        run: |
-          set +e
-          output=$(npx eas-cli@latest build --platform android --profile "$EAS_PROFILE" --non-interactive --wait 2>&1)
-          status=$?
-          printf '%s\n' "$output"
-          if [ "$status" -ne 0 ]; then
-            if printf '%s\n' "$output" | grep -qiE 'used its Android builds from the Free plan|Android builds from the Free plan this month|free plan.*builds'; then
-              echo "EAS Android build quota is exhausted; the native compile job provides the installable APK artifact for this commit."
-              exit 0
-            fi
-            exit "$status"
-          fi
