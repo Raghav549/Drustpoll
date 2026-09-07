@@ -1,4 +1,5 @@
 import {t as baseT} from './core';
+import {fullLocalePacks} from './full-locale-packs';
 
 type Vars=Record<string,string|number>;
 type Dictionary=Record<string,string>;
@@ -20,7 +21,7 @@ const packs:Record<string,Dictionary>={
 };
 
 export function localizedT(locale:string,key:string,vars?:Vars){
- const value=packs[locale]?.[key];
+ const value=packs[locale]?.[key]??fullLocalePacks[locale]?.[key];
  if(value!==undefined)return value.replace(/\{(\w+)\}/g,(_,name)=>String(vars?.[name]??`{${name}}`));
  return baseT(locale,key,vars);
 }
