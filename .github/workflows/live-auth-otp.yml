@@ -1,0 +1,27 @@
+name: Live Auth OTP
+on:
+  workflow_dispatch:
+    inputs:
+      test_email:
+        description: 'Real inbox to receive the OTP'
+        required: true
+        type: string
+      test_password:
+        description: 'Temporary strong password for the smoke account'
+        required: true
+        type: string
+jobs:
+  signup-otp:
+    runs-on: ubuntu-latest
+    env:
+      API_URL: https://drustpoll.onrender.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Live signup and OTP request
+        env:
+          TEST_EMAIL: ${{ inputs.test_email }}
+          TEST_PASSWORD: ${{ inputs.test_password }}
+        run: node scripts/ci-live-email-signup-otp.mjs
