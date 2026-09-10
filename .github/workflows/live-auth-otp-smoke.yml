@@ -1,0 +1,19 @@
+name: Live auth OTP smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  signup-otp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run live signup smoke
+        env:
+          DRUSTPOLL_API_URL: https://drustpoll.onrender.com
+          TEST_SIGNUP_EMAIL: ${{ secrets.TEST_SIGNUP_EMAIL }}
+          TEST_SIGNUP_PASSWORD: ${{ secrets.TEST_SIGNUP_PASSWORD }}
+        run: node server/tests/live-auth-otp-smoke.mjs
