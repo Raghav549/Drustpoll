@@ -8,7 +8,7 @@ export async function getSettingsSurface(userId:string){
     query('SELECT * FROM privacy_permissions WHERE user_id=$1 ORDER BY permission',[userId]),
     query('SELECT u.id,u.username,u.display_name FROM safety_blocks b JOIN users u ON u.id=b.blocked_user_id WHERE b.user_id=$1 ORDER BY b.created_at DESC',[userId]),
     query('SELECT u.id,u.username,u.display_name FROM safety_mutes m JOIN users u ON u.id=m.muted_user_id WHERE m.user_id=$1 ORDER BY m.created_at DESC',[userId]),
-    query('SELECT term,kind,created_at FROM hidden_terms WHERE user_id=$1 ORDER BY created_at DESC',[userId]),
+    query('SELECT term,kind,created_at FROM user_hidden_terms WHERE user_id=$1 ORDER BY created_at DESC',[userId]),
     query('SELECT control,value,changed_at FROM privacy_control_history WHERE user_id=$1 ORDER BY changed_at DESC LIMIT 100',[userId]),
     query('SELECT id,kind,status,created_at,completed_at FROM privacy_data_requests WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',[userId]),
     query('SELECT * FROM security_alerts WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',[userId])

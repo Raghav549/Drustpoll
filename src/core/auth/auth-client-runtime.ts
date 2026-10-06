@@ -2,6 +2,8 @@ import { Platform } from 'react-native';
 import { AuthState } from './auth-contract';
 
 const API_URL=(process.env.EXPO_PUBLIC_API_URL??'').replace(/\/$/,'');
+// On web an unset API URL means the API is served from the same origin.
+const SAME_ORIGIN=!API_URL&&Platform.OS==='web';
 const REQUEST_TIMEOUT_MS=20000;
 let memoryToken:string|null=null;let memoryRefresh:string|null=null;
 async function secureStore(){if(Platform.OS==='web')return null;return import('expo-secure-store');}
@@ -12,7 +14,7 @@ export async function clearPersistedAuth(){memoryToken=null;memoryRefresh=null;c
 function localNetworkHint(url:string){return /^(http:\/\/localhost|http:\/\/127\.0\.0\.1|http:\/\/10\.|http:\/\/192\.168\.|http:\/\/172\.(1[6-9]|2\d|3[0-1])\.)/i.test(url);}
 function friendlyTransportError(error:unknown){const message=error instanceof Error?error.message:'';if(/AbortError|NETWORK_TIMEOUT|timed out|timeout/i.test(message))return 'The Drustpoll server took too long to respond. Please try again.';if(/Network request failed|Failed to fetch|fetch failed|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|socket|TLS|certificate|SSL/i.test(message))return 'Unable to reach the Drustpoll server right now. Please try again.';return message||'Unable to reach the Drustpoll server right now. Please try again.';}
 async function request(path:string,init:RequestInit={},withAuth=true){
- if(!API_URL)throw new Error('Backend URL is not configured. Set EXPO_PUBLIC_API_URL to the deployed HTTPS API URL.');
+ if(!API_URL&&!SAME_ORIGIN)throw new Error('Backend URL is not configured. Set EXPO_PUBLIC_API_URL to the deployed HTTPS API URL.');
  if(localNetworkHint(API_URL)&&Platform.OS==='android')throw new Error('This Android build cannot use a localhost or LAN HTTP backend. Configure EXPO_PUBLIC_API_URL with the deployed HTTPS Drustpoll API URL.');
  const token=withAuth?await getAccessToken():null;const headers=new Headers(init.headers);headers.set('Content-Type','application/json');if(token)headers.set('Authorization',`Bearer ${token}`);
  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),REQUEST_TIMEOUT_MS);let response:Response;try{response=await fetch(`${API_URL}${path}`,{...init,headers,credentials:'include',signal:controller.signal});}catch(e){throw new Error(friendlyTransportError(e));}finally{clearTimeout(timer);}

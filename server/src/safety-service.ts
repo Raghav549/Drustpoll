@@ -10,6 +10,19 @@ export async function restrictUser(actorId:string,targetId:string,restricted:boo
 export async function reportContent(actorId:string,target:{userId?:string;postId?:string;commentId?:string;messageId?:string},reason:string,details=''){if(!reasons.has(reason))throw new Error('Invalid report reason');const keys=Object.entries(target).filter(([,v])=>v);if(keys.length!==1)throw new Error('Exactly one report target is required');const map:{[k:string]:string}={userId:'target_user_id',postId:'target_post_id',commentId:'target_comment_id',messageId:'target_message_id'};const column=map[keys[0][0]];const value=String(keys[0][1]);const safeDetails=details.slice(0,2000);const r=await query(`INSERT INTO content_reports(reporter_id,${column},reason,details) VALUES($1,$2,$3,$4) RETURNING id,created_at,status`,[actorId,value,reason,safeDetails]);await query(`INSERT INTO safety_cases(reporter_id,report_id) VALUES($1,$2) ON CONFLICT DO NOTHING`,[actorId,r.rows[0].id]);return r.rows[0];}
 export async function getSafetyState(actorId:string,targetId:string){const r=await query(`SELECT EXISTS(SELECT 1 FROM user_blocks WHERE blocker_id=$1 AND blocked_id=$2) blocked, EXISTS(SELECT 1 FROM user_mutes WHERE muter_id=$1 AND muted_id=$2) muted, EXISTS(SELECT 1 FROM user_restrictions WHERE user_id=$1 AND target_user_id=$2) restricted`,[actorId,targetId]);return r.rows[0];}
 export async function addReportEvidence(actorId:string,reportId:string,mediaId?:string,note=''){const own=await query('SELECT 1 FROM content_reports WHERE id=$1 AND reporter_id=$2',[reportId,actorId]);if(!own.rowCount)throw new Error('Report not found');if(!mediaId&&!note.trim())throw new Error('Evidence note or media is required');const r=await query(`INSERT INTO content_report_evidence(report_id,media_id,note) VALUES($1,$2,$3) RETURNING id,created_at`,[reportId,mediaId||null,note.slice(0,1000)]);return r.rows[0];}
+/**
+ * Attach evidence to a safety case the reporter owns. A case is the user-facing
+ * record; evidence is stored against the underlying content report so moderation
+ * keeps a single evidence trail.
+ */
+export async function addCaseEvidence(actorId:string,caseId:string,mediaId?:string,note=''){
+ const found=await query<{report_id:string|null}>('SELECT report_id FROM safety_cases WHERE id=$1 AND reporter_id=$2',[caseId,actorId]);
+ if(!found.rowCount)throw new Error('Safety case not found');
+ const reportId=found.rows[0].report_id;
+ if(!reportId)throw new Error('This case has no linked report to attach evidence to');
+ return addReportEvidence(actorId,reportId,mediaId,note);
+}
+
 export async function listSafetyCases(actorId:string){const r=await query(`SELECT s.id,s.state,s.appeal_text,s.appeal_status,s.created_at,s.updated_at,s.report_id,cr.reason,cr.status report_status FROM safety_cases s LEFT JOIN content_reports cr ON cr.id=s.report_id WHERE s.reporter_id=$1 ORDER BY s.updated_at DESC LIMIT 100`,[actorId]);return r.rows;}
 export async function submitAppeal(actorId:string,caseId:string,text:string){const body=text.trim().slice(0,4000);if(body.length<10)throw new Error('Appeal needs more detail');const r=await query(`UPDATE safety_cases SET appeal_text=$1,appeal_status='submitted',state='appealed',updated_at=now() WHERE id=$2 AND reporter_id=$3 AND state<>'closed' RETURNING id,appeal_status,state,updated_at`,[body,caseId,actorId]);if(!r.rows[0])throw new Error('Safety case not found or closed');return r.rows[0];}
 export async function listModerationNotices(actorId:string){const r=await query(`SELECT id,object_type,object_id,title,body,action,appeal_available,created_at FROM moderation_notices WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100`,[actorId]);return r.rows;}

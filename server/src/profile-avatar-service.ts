@@ -14,7 +14,7 @@ export async function createAvatarUpload(userId:string,mime:string,size:number){
 export async function completeAvatarUpload(userId:string,storageKey:string,mime:string,size:number){
  const r=await query<{storage_key:string;mime_type:string;byte_size:number}>('SELECT storage_key,mime_type,byte_size FROM profile_avatar_uploads WHERE user_id=$1 AND status=\'pending\'',[userId]);
  if(!r.rowCount||r.rows[0].storage_key!==storageKey||r.rows[0].mime_type!==mime||Number(r.rows[0].byte_size)!==Number(size))throw new Error('Avatar upload does not match the pending upload');
- const object=await headObject(storageKey);if(Number(object.contentLength)!==Number(size)||object.contentType!==mime)throw new Error('Profile picture upload could not be verified');
+ const object=await headObject(storageKey);if(Number(object.contentLength)!==Number(size)||(object.contentType&&object.contentType!==mime))throw new Error('Profile picture upload could not be verified');
  await query('UPDATE profiles SET avatar_url=$2,updated_at=now() WHERE user_id=$1',[userId,storageKey]);
  await query('UPDATE profile_avatar_uploads SET status=\'ready\',updated_at=now() WHERE user_id=$1',[userId]);
  return {ok:true,avatarUrl:storageKey};

@@ -2,8 +2,21 @@ import { api } from './client';
 
 export async function createPost(input:any){return api<{id:string;createdAt:string}>('/v1/posts',{method:'POST',body:JSON.stringify(input)});}
 export async function getMyProfile(){return api<{profile:any|null}>('/v1/social/me/profile');}
-export async function getMyProfileSurface(){return api<{profile:any}>('/v1/profiles/me');}
-export async function getProfileSurface(userId:string){return api<{profile:any}>(`/v1/profiles/${encodeURIComponent(userId)}`);}
+/** Profile surface contract served by GET /v1/profiles/:id (and /v1/profiles/me). */
+export type ProfileSurface={
+ user_id:string;username:string;display_name:string|null;bio:string|null;avatar_url:string|null;website_url:string|null;
+ profile_visibility:'public'|'followers'|'private';activity_visibility:string|null;discoverability:string|null;
+ follower_count:number;following_count:number;post_count:number;video_count:number;
+ following:boolean;requested:boolean;relationship_state:string|null;
+ verified:boolean;verification_label:string;
+ creator_category:string|null;creator_bio:string|null;
+ seller_status:string|null;shop_id:string|null;shop_name:string|null;
+ city:string|null;region:string|null;country_code:string|null;location_precision:string|null;location_discoverable:boolean|null;
+};
+export async function getMyProfileSurface(){return api<{profile:ProfileSurface}>('/v1/profiles/me');}
+export async function getProfileSurface(userId:string){return api<{profile:ProfileSurface}>(`/v1/profiles/${encodeURIComponent(userId)}`);}
+/** Private saved-posts tab for the signed-in user. */
+export async function getSavedPosts(limit=30,before?:string){return api<{posts:any[];nextBefore:string|null}>(`/v1/profiles/me/saved?limit=${limit}${before?`&before=${encodeURIComponent(before)}`:''}`);}
 export async function getFollowers(userId:string,limit=50,before?:string){return api<{people:any[];nextBefore:string|null}>(`/v1/profiles/${encodeURIComponent(userId)}/followers?limit=${limit}${before?`&before=${encodeURIComponent(before)}`:''}`);}
 export async function getFollowing(userId:string,limit=50,before?:string){return api<{people:any[];nextBefore:string|null}>(`/v1/profiles/${encodeURIComponent(userId)}/following?limit=${limit}${before?`&before=${encodeURIComponent(before)}`:''}`);}
 export async function getMutualContext(userId:string){return api<any>(`/v1/profiles/${encodeURIComponent(userId)}/mutuals`);}

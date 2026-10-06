@@ -7,5 +7,5 @@
     "ignoreDeprecations": "6.0",
     "paths": { "@/*": ["./*"] }
   },
-  "exclude": ["server", "app/profile.tsx", "app/reels.tsx", "src/ui/SocialSurfaceActions.tsx"]
+  "exclude": ["server"]
 }

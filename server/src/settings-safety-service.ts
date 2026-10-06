@@ -26,7 +26,7 @@ export async function setHiddenTerm(userId:string,term:string,kind:string,hidden
 export async function resetRecommendations(userId:string){
   await withTransaction(async client=>{
     await client.query(`DELETE FROM recommendation_feedback WHERE user_id=$1`,[userId]).catch(()=>undefined);
-    await client.query(`DELETE FROM recommendation_exposures WHERE user_id=$1`,[userId]).catch(()=>undefined);
+    await client.query(`DELETE FROM recommendation_exposure WHERE user_id=$1`,[userId]).catch(()=>undefined);
     await client.query(`DELETE FROM discovery_preferences WHERE user_id=$1`,[userId]).catch(()=>undefined);
     await client.query(`INSERT INTO privacy_audit_events(actor_id,subject_id,action,resource_type,resource_id,allowed) VALUES($1,$1,'recommendation_reset','recommendation',$1,true)`,[userId]);
   });
