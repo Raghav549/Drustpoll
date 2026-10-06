@@ -1,8 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-const MAX_REQUESTS=120;
-const WINDOW_MS=60_000;
+// Per-fingerprint request budget. The production default stays 120/min; a
+// deployment may tune it (e.g. trusted load tests, higher-traffic tiers) without
+// a code change. Values are clamped to a sane range.
+const MAX_REQUESTS=Math.min(Math.max(Number(process.env.RATE_LIMIT_MAX_REQUESTS??120),30),100_000);
+const WINDOW_MS=Math.min(Math.max(Number(process.env.RATE_LIMIT_WINDOW_MS??60_000),1_000),3_600_000);
 const MAX_BUCKETS=10_000;
 const buckets=new Map<string,{started:number;count:number}>();
 

@@ -15,6 +15,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: node scripts/eas-check-config.mjs
       - run: node scripts/ci-i18n-coverage.mjs
+      - run: node scripts/ci-route-parity.mjs
       - run: npm run typecheck
   server:
     runs-on: ubuntu-latest

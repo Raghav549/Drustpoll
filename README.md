@@ -6,9 +6,21 @@ Drustpoll brings profiles, posts, short video, discovery, messaging, creator too
 
 ## Status
 
-Foundation phase. The repository starts intentionally small so the architecture can be built cleanly rather than accumulating demo-only code.
+The social, discovery, media, messaging and commerce surfaces are implemented end to end
+against a server-authoritative API, and verified by a full-stack smoke that exercises
+every surface with a real database, real email delivery and the real media worker.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the initial system design and security principles.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system design and security principles
+- [`docs/RUNNING-LOCALLY.md`](docs/RUNNING-LOCALLY.md) — run the whole stack locally
+- [`docs/audit/IMPLEMENTATION-AUDIT-RESULTS.md`](docs/audit/IMPLEMENTATION-AUDIT-RESULTS.md) — measured audit results and remaining boundaries
+
+## Verification
+
+```bash
+npm run typecheck && node scripts/ci-route-parity.mjs   # app + client/server route parity
+cd server && npm run typecheck && npm run build && npm test
+node scripts/e2e-full-smoke.mjs                          # 38 checks, every product surface
+```
 
 ## Product pillars
 

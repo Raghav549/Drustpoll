@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+server/dist/
+web-build/
+
+# Expo
+.expo/
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Local media storage (local driver object root)
+.media-store/
+server/.media-store/
+
+# Local runtime artifacts
+*.log
+*.pid
+.DS_Store
+
+# Environment / secrets — never commit these
+.env
+.env.*
+!.env.example
