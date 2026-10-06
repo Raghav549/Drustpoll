@@ -1,5 +1,6 @@
 import type { IncomingMessage } from 'node:http';
 import { getReelPreferences, updateReelPreferences, setReelCreatorFeedback, getReelAudio, getRelatedReels } from './reel-surface-service.js';
+import { getReelById } from './reels-service.js';
 import { mediaUri, originFor } from './storage-service.js';
 
 const json = (res: any, status: number, body: unknown) => {
@@ -44,6 +45,14 @@ export async function handleReelsRoute(req: IncomingMessage, res: any, userId: s
   if (path === '/v1/reels/audio' && req.method === 'GET') {
     const items = await getReelAudio(url.searchParams.get('q') ?? '');
     return json(res, 200, { items });
+  }
+  const reel = path.match(/^\/v1\/reels\/([^/]+)$/);
+  if (reel && req.method === 'GET') {
+    const item = await getReelById(userId, reel[1]);
+    if (!item) return json(res, 404, { error: 'Reel not found' });
+    const origin = originFor(req.headers.host);
+    if (item.videoUrl.startsWith('/')) item.videoUrl = origin + item.videoUrl;
+    return json(res, 200, { item });
   }
   return false;
 }

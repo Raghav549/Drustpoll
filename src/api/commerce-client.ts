@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api } from './request';
 export type Order={orderId:string;sellerId:string;totalMinor:number;currency:string;status:string;createdAt:string;updatedAt:string;items:any[]};
 export type SellerProduct={id:string;title:string;description?:string;price_minor:number;currency:string;inventory:number;category?:string|null;status:string};
 export async function getCart(){return api<any>('/v1/cart');}
@@ -19,6 +19,7 @@ export async function askProductQuestion(productId:string,question:string){retur
 export async function getMarketCategories(){return api<any>('/v1/market/categories');}
 export async function getMarketProducts(params:any={}){const q=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v!==undefined&&v!==null&&v!=='')q.set(k,String(v));});return api<any>(`/v1/market/products?${q.toString()}`);}
 export async function getMarketProductDetail(productId:string){return api<any>(`/v1/market/products/${encodeURIComponent(productId)}`);}
+export async function getMarketShop(shopId:string){return api<any>(`/v1/market/shops/${encodeURIComponent(shopId)}`);}
 export async function getCommerceProduct(productId:string){return getMarketProductDetail(productId);}
 export async function getSavedProducts(limit=50,before?:string){return api<any>(`/v1/market/saved-products?limit=${limit}${before?`&before=${encodeURIComponent(before)}`:''}`);}
 export async function setProductWishlist(productId:string,saved:boolean){return api<any>(`/v1/market/products/${encodeURIComponent(productId)}/wishlist`,{method:saved?'POST':'DELETE'});}

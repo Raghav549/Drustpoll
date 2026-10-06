@@ -14,7 +14,7 @@ function reason(c:Candidate,selected:Candidate[]):RecommendationReason{if(c.watc
  * and controlled experiments with diversity, safety, privacy and negative-feedback guardrails.
  */
 export async function getRecommendedPosts(userId:string,limit=20){
- const size=Math.min(Math.max(Math.trunc(limit),1),50),candidateLimit=Math.min(size*12,600);
+ const size=Math.min(Math.max(Number.isFinite(limit)?Math.trunc(limit):20,1),600),candidateLimit=Math.min(size*12,600);
  const result=await query<Candidate>(`WITH followed AS(SELECT followed_id FROM follows WHERE follower_id=$1 AND state='following'),
  seen AS(SELECT DISTINCT post_id FROM recommendation_events WHERE user_id=$1 AND post_id IS NOT NULL AND created_at>now()-interval '14 days'),
  blocked AS(SELECT blocked_id user_id FROM user_blocks WHERE blocker_id=$1 UNION SELECT blocker_id FROM user_blocks WHERE blocked_id=$1),
@@ -32,6 +32,7 @@ export async function getRecommendedPosts(userId:string,limit=20){
  CASE WHEN p.created_at>now()-interval '6 hours' THEN 1.0 WHEN p.created_at>now()-interval '1 day' THEN .75 WHEN p.created_at>now()-interval '3 days' THEN .5 ELSE .2 END freshness,
  CASE WHEN p.author_id IN(SELECT followed_id FROM followed) THEN .85 ELSE .45 END relevance,
  CASE WHEN p.id IN(SELECT post_id FROM seen) THEN .12 ELSE .82 END novelty,
+ CASE WHEN COALESCE(e.n,0)=0 THEN 1.0 WHEN e.n=1 THEN .75 WHEN e.n<4 THEN .45 ELSE .15 END diversity,
  CASE WHEN w.post_id IS NULL THEN .55 ELSE LEAST(1.0,GREATEST(.05,(w.watched_ms::double precision/GREATEST(w.duration_ms,1))*.75+LEAST(1,w.replays*.08))) END watch_affinity,
  CASE WHEN COALESCE(e.n,0)=0 THEN 1.0 WHEN e.n=1 THEN .75 WHEN e.n<4 THEN .45 ELSE .15 END creator_exposure,
  CASE WHEN cf.status='ready' THEN

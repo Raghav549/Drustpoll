@@ -17,7 +17,7 @@ type SavedItem = {
   title?: string;
   price_minor?: number;
   currency?: string;
-  media_key?: string;
+  media_uri?: string | null;
 };
 
 const itemKey = (item: { productId?: string; variantId?: string | null }) =>
@@ -117,7 +117,7 @@ export default function Cart() {
             (item as any).currentUnitPriceMinor ?? (item as any).unitPriceMinor ?? (item as any).priceMinor ?? 0,
           ),
           currency: item.currency,
-          media_key: (item as any).mediaKey,
+          media_uri: (item as any).mediaUri ?? null,
         },
       ]);
     } catch (e) {
@@ -217,8 +217,8 @@ export default function Cart() {
               return (
                 <View key={key} style={styles.item}>
                   <View style={styles.thumb}>
-                    {raw.mediaKey ? (
-                      <Image source={{ uri: String(raw.mediaKey) }} style={styles.image} />
+                    {raw.mediaUri ? (
+                      <Image source={{ uri: String(raw.mediaUri) }} style={styles.image} />
                     ) : (
                       <Icon name={unavailable ? 'circleAlert' : 'package'} size={21} color={unavailable ? colors.danger : colors.commerce} />
                     )}
@@ -284,10 +284,15 @@ export default function Cart() {
               const key = `${item.product_id}:${item.variant_id ?? 'base'}`;
               return (
                 <View key={key} style={styles.savedRow}>
-                  <View style={styles.flex}>
-                    <Text style={styles.itemTitle}>{item.title || 'Saved product'}</Text>
-                    <Text style={styles.price}>{(Number(item.price_minor ?? 0) / 100).toFixed(2)} {item.currency ?? ''}</Text>
-                  </View>
+                  <Link href={{pathname:'/product',params:{id:item.product_id}}} asChild>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title || 'saved product'}`} style={styles.savedProduct}>
+                      <View style={styles.thumb}>{item.media_uri?<Image source={{uri:item.media_uri}} style={styles.image}/>:<Icon name="package" size={20} color={colors.commerce}/>}</View>
+                      <View style={styles.flex}>
+                        <Text style={styles.itemTitle}>{item.title || 'Saved product'}</Text>
+                        <Text style={styles.price}>{(Number(item.price_minor ?? 0) / 100).toFixed(2)} {item.currency ?? ''}</Text>
+                      </View>
+                    </Pressable>
+                  </Link>
                   <Pressable onPress={() => void restore(item)} disabled={busy === key} style={styles.restore} accessibilityRole="button">
                     <Icon name="cart" size={16} color={colors.brand} />
                     <Text style={styles.restoreText}>Move to cart</Text>
@@ -361,6 +366,7 @@ const styles = StyleSheet.create({
   saved: { gap: 10, padding: spacing.lg, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface },
   sectionTitle: { fontSize: type.titleMD, fontWeight: '900', color: colors.ink },
   savedRow: { paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.line, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  savedProduct: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
   restore: { minHeight: 42, paddingHorizontal: 12, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 },
   restoreText: { fontWeight: '800', color: colors.brand },
   trust: { padding: spacing.xl, borderRadius: radius.xl, backgroundColor: colors.successSoft, borderWidth: 1, borderColor: '#CFE9D9', flexDirection: 'row', gap: 10 },
