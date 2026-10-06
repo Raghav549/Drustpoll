@@ -7,6 +7,11 @@ test('feed cursor round-trips deterministically', () => {
   assert.deepEqual(decodeFeedCursor(encodeFeedCursor(input)), input);
 });
 
+test('feed cursor preserves ranked pagination positions', () => {
+  const input = { createdAt: '2026-09-02T10:20:30.000Z', id: 'post-123', position: 47 };
+  assert.deepEqual(decodeFeedCursor(encodeFeedCursor(input)), input);
+});
+
 test('feed cursor rejects malformed input', () => {
   assert.throws(() => decodeFeedCursor('not-a-cursor'));
   assert.throws(() => decodeFeedCursor(''));

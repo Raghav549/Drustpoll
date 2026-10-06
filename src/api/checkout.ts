@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api } from './request';
 
 export type CheckoutSession = {
   id: string;

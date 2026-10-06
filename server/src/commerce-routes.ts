@@ -24,11 +24,12 @@ import {
   deleteVariant,
   setStorefrontMetadata,
   getShopDiscovery,
+  getPublicShop,
   listShopCollections,
   addCollection,
 } from './market-surface-service.js';
 import { recordCommerceEvent, getRecommendedProducts } from './commerce-recommendation-service.js';
-import { originFor, mediaUri } from './storage-service.js';
+import { originFor, mediaUri, hydrateAvatarRows } from './storage-service.js';
 
 const json = (res: any, status: number, body: unknown) => {
   res.statusCode = status;
@@ -49,7 +50,7 @@ const str = (v: unknown) => String(v ?? '').trim();
 /** Attach signed media URIs to product media rows (storage_key based). */
 async function hydrateProductMedia(rows: Array<Record<string, unknown>>, origin: string) {
   for (const row of rows) {
-    const key = typeof row.storage_key === 'string' ? row.storage_key : typeof row.mediaKey === 'string' ? (row.mediaKey as string) : null;
+    const key = typeof row.storage_key === 'string' ? row.storage_key : typeof row.media_key === 'string' ? (row.media_key as string) : typeof row.mediaKey === 'string' ? (row.mediaKey as string) : null;
     if (!key) continue;
     const uri = await mediaUri(key, origin);
     if (uri) row.uri = uri;
@@ -67,7 +68,13 @@ export async function handleCommerceRoute(req: IncomingMessage, res: any, userId
   const method = req.method ?? 'GET';
 
   // ---- Cart --------------------------------------------------------------
-  if (path === '/v1/cart' && method === 'GET') return json(res, 200, await getCart(userId));
+  if (path === '/v1/cart' && method === 'GET') {
+    const cart = await getCart(userId);
+    for (const item of cart.items ?? []) {
+      if (typeof item.mediaKey === 'string') item.mediaUri = await mediaUri(item.mediaKey, origin);
+    }
+    return json(res, 200, cart);
+  }
   if (path === '/v1/cart/items') {
     const i = await body(req);
     const productId = str(i.productId);
@@ -137,13 +144,16 @@ export async function handleCommerceRoute(req: IncomingMessage, res: any, userId
   }
   if (path === '/v1/market/products' && method === 'GET') {
     const page = await listMarketProducts(userId, url.searchParams);
-    await hydrateProductMedia((page.items ?? []) as any, origin);
+    const mediaRows = (page.items ?? []).flatMap((product: any) => Array.isArray(product.media) ? product.media : []);
+    await hydrateProductMedia(mediaRows, origin);
     return json(res, 200, page);
   }
   if (path === '/v1/market/saved-products' && method === 'GET') {
     const limit = Number(url.searchParams.get('limit') ?? 50);
     const before = url.searchParams.get('before') ?? undefined;
-    return json(res, 200, await getSavedProducts(userId, Number.isFinite(limit) ? limit : 50, before));
+    const page = await getSavedProducts(userId, Number.isFinite(limit) ? limit : 50, before);
+    await hydrateProductMedia(page.items as any, origin);
+    return json(res, 200, page);
   }
   if (path === '/v1/market/addresses') {
     if (method === 'GET') return json(res, 200, { addresses: await listAddresses(userId) });
@@ -155,12 +165,26 @@ export async function handleCommerceRoute(req: IncomingMessage, res: any, userId
   m = path.match(/^\/v1\/market\/addresses\/([^/]+)$/);
   if (m && method === 'DELETE') return json(res, 200, await deleteAddress(userId, m[1]));
 
+  m = path.match(/^\/v1\/market\/shops\/([^/]+)$/);
+  if (m && method === 'GET') {
+    const storefront = await getPublicShop(userId, m[1]);
+    if (!storefront) return json(res, 404, { error: 'Shop not found' });
+    for (const product of storefront.items as any[]) {
+      await hydrateProductMedia(Array.isArray(product.media) ? product.media : [], origin);
+    }
+    const shop = storefront.shop as any;
+    await hydrateAvatarRows([shop], origin, ['logo_url', 'banner_url']);
+    shop.logo_uri = shop.logo_url ?? null;
+    shop.banner_uri = shop.banner_url ?? null;
+    return json(res, 200, storefront);
+  }
   m = path.match(/^\/v1\/market\/products\/([^/]+)$/);
   if (m && method === 'GET') {
     const detail = await getMarketProductDetail(userId, m[1]);
     if (!detail) return json(res, 404, { error: 'Product not found' });
     await hydrateProductMedia(detail.media as any, origin);
     const related = await relatedProducts(userId, m[1], 8).catch(() => []);
+    await hydrateProductMedia(related as any, origin);
     return json(res, 200, { ...detail, related });
   }
   m = path.match(/^\/v1\/market\/products\/([^/]+)\/wishlist$/);

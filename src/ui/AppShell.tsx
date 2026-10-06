@@ -1,13 +1,229 @@
-import {ReactNode} from 'react';
-import {Link,usePathname} from 'expo-router';
-import {Pressable,StyleSheet,Text,View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {colors,radius,spacing,type,elevation} from './theme';
-import {useResponsiveLayout} from './responsive';
-import {Icon,type IconName} from './icons';
-import {useI18n} from '../i18n/provider';
-const items:Array<{href:string;icon:IconName;key:'home'|'explore'|'createNav'|'connect'|'you';hint:string}>= [{href:'/',icon:'home',key:'home',hint:'Your social context'},{href:'/search',icon:'search',key:'explore',hint:'Find people, ideas and products'},{href:'/create',icon:'create',key:'createNav',hint:'Create and express'},{href:'/messages',icon:'connect',key:'connect',hint:'Messages and conversations'},{href:'/profile',icon:'profile',key:'you',hint:'Profile and controls'}];
-export function AppShell({children}:{children:ReactNode}){const pathname=usePathname();const{isDesktop}=useResponsiveLayout();const{t}=useI18n();const activeFor=(href:string)=>pathname===href||(href!=='/'&&pathname.startsWith(`${href}/`));
-if(isDesktop)return <SafeAreaView style={s.safe} edges={['top','left','right','bottom']}><View style={s.desktopBody}><View style={s.rail} accessible accessibilityLabel="Drustpoll navigation"><View style={s.brandLockup}><View style={s.brandOrb}><View style={s.orbCut}/></View><View><Text style={s.brandWord}>drustpoll</Text><Text style={s.brandSub}>LIVING CANVAS</Text></View></View><View style={s.railItems}>{items.map(item=>{const active=activeFor(item.href);const label=t(item.key);return <Link key={item.href} href={item.href} asChild><Pressable accessibilityRole="link" accessibilityLabel={`${label}: ${item.hint}`} accessibilityState={{selected:active}} style={({pressed})=>[s.railItem,active&&s.railActive,pressed&&s.pressed]}><View style={[s.railIcon,active&&s.railIconActive]}><Icon name={item.icon} size={20} color={active?colors.brand:colors.muted}/></View><View style={s.railLabelWrap}><Text style={[s.railLabel,active&&s.labelActive]}>{label}</Text><View style={[s.railMark,active&&s.railMarkActive]}/></View></Pressable></Link>})}</View><View style={s.railFoot}><View style={s.footRule}/><Text style={s.railFootText}>quiet · clear · human</Text></View></View><View style={s.desktopContent}>{children}</View></View></SafeAreaView>;
-return <SafeAreaView style={s.safe} edges={['top','left','right','bottom']}><View style={s.body}>{children}</View><View style={s.dock} accessibilityRole="tablist" accessibilityLabel="Drustpoll primary navigation"><View style={s.dockInner}>{items.map((item,i)=>{const active=activeFor(item.href);const center=i===2;const label=t(item.key);return <Link key={item.href} href={item.href} asChild><Pressable accessibilityRole="tab" accessibilityLabel={`${label}: ${item.hint}`} accessibilityState={{selected:active}} style={({pressed})=>[s.dockItem,center&&s.createDockItem,pressed&&s.pressed]}><View style={[s.dockIcon,center&&s.createIcon]}>{center?<View style={s.createGlyph}><Icon name="create" size={21} color={colors.white}/></View>:<><Icon name={item.icon} size={20} color={active?colors.brand:colors.muted}/>{active?<View style={s.activeTick}/>:null}</>}</View><Text style={[s.label,active&&s.labelActive,center&&s.createLabel]}>{label}</Text></Pressable></Link>})}</View></View></SafeAreaView>;}
-const s=StyleSheet.create({safe:{flex:1,backgroundColor:colors.canvas},body:{flex:1,paddingBottom:96},desktopBody:{flex:1,flexDirection:'row'},desktopContent:{flex:1,minWidth:0},rail:{width:158,paddingHorizontal:14,paddingTop:16,paddingBottom:12,backgroundColor:colors.canvas,borderRightWidth:1,borderRightColor:colors.line},brandLockup:{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:4},brandOrb:{width:40,height:40,borderRadius:13,backgroundColor:colors.brand,alignItems:'center',justifyContent:'center'},orbCut:{width:18,height:18,borderRadius:10,borderWidth:3,borderColor:colors.white},brandWord:{fontSize:14,fontWeight:'800',letterSpacing:-.2,color:colors.ink},brandSub:{fontSize:8,fontWeight:'800',letterSpacing:1.4,color:colors.faint,marginTop:2},railItems:{width:'100%',gap:3,marginTop:28},railItem:{minHeight:58,borderRadius:radius.md,paddingHorizontal:8,flexDirection:'row',alignItems:'center',gap:10},railActive:{backgroundColor:colors.surface,...elevation.low},railIcon:{width:40,height:40,borderRadius:12,alignItems:'center',justifyContent:'center'},railIconActive:{backgroundColor:colors.brandSoft},railLabelWrap:{flex:1,gap:3},railLabel:{fontSize:type.labelMD,color:colors.muted,fontWeight:'700'},labelActive:{color:colors.ink,fontWeight:'800'},railMark:{height:2,width:0,borderRadius:2,backgroundColor:colors.accent},railMarkActive:{width:18},railFoot:{marginTop:'auto',paddingHorizontal:4,gap:8},footRule:{height:1,backgroundColor:colors.line},railFootText:{fontSize:8.5,fontWeight:'800',letterSpacing:1.1,textTransform:'uppercase',color:colors.faint},pressed:{opacity:.72,transform:[{scale:.985}]},dock:{position:'absolute',left:18,right:18,bottom:12,alignItems:'center'},dockInner:{height:70,backgroundColor:colors.surface,borderWidth:1,borderColor:colors.line,borderRadius:18,paddingHorizontal:6,flexDirection:'row',alignItems:'center',...elevation.medium},dockItem:{flex:1,minHeight:58,borderRadius:15,alignItems:'center',justifyContent:'center',gap:3},dockIcon:{height:34,minWidth:42,alignItems:'center',justifyContent:'center',position:'relative'},activeTick:{position:'absolute',bottom:0,width:18,height:2,borderRadius:2,backgroundColor:colors.brand},createDockItem:{flexGrow:1.05},createIcon:{width:48,height:46,borderRadius:14,backgroundColor:colors.brand},createGlyph:{width:42,height:40,borderRadius:11,borderWidth:1,borderColor:'rgba(255,255,255,0.45)',alignItems:'center',justifyContent:'center'},label:{fontSize:type.labelSM,color:colors.muted,fontWeight:'700'},createLabel:{fontWeight:'800',color:colors.brand}});
+import { ReactNode } from 'react';
+import { Link, usePathname } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { BrandMark } from './BrandMark';
+import { colors, elevation, radius, type } from './theme';
+import { useResponsiveLayout } from './responsive';
+import { Icon, type IconName } from './icons';
+import { useI18n } from '../i18n/provider';
+
+type NavKey = 'home' | 'explore' | 'createNav' | 'connect' | 'market' | 'you';
+type NavItem = { href: string; icon: IconName; key: NavKey; routes: string[] };
+
+const items: NavItem[] = [
+  { href: '/', icon: 'home', key: 'home', routes: ['/'] },
+  { href: '/discovery', icon: 'search', key: 'explore', routes: ['/search', '/discovery', '/reels'] },
+  { href: '/create', icon: 'create', key: 'createNav', routes: ['/create'] },
+  { href: '/messages', icon: 'connect', key: 'connect', routes: ['/messages', '/conversation', '/new-message'] },
+  { href: '/shop', icon: 'shop', key: 'market', routes: ['/shop', '/product', '/cart', '/checkout', '/checkout-screen', '/orders', '/order', '/seller', '/seller-settings', '/saved-products'] },
+  { href: '/profile', icon: 'profile', key: 'you', routes: ['/profile', '/profile-view', '/profile-list', '/collection', '/settings', '/settings-control', '/account-controls', '/privacy', '/security', '/safety', '/language', '/accessibility', '/ads', '/professional', '/business-verification'] },
+];
+
+const utilityItems: Array<{ href: string; key: 'notifications' | 'settings'; icon: IconName; routes: string[] }> = [
+  { href: '/notifications', key: 'notifications', icon: 'bell', routes: ['/notifications'] },
+  { href: '/settings', key: 'settings', icon: 'settings', routes: ['/settings'] },
+];
+
+function routeMatches(pathname: string, route: string) {
+  return route === '/' ? pathname === '/' : pathname === route || pathname.startsWith(`${route}/`);
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const { isDesktop, isTablet } = useResponsiveLayout();
+  const { t } = useI18n();
+  const useRail = isDesktop || isTablet;
+  const compactRail = isTablet && !isDesktop;
+  const activeFor = (item: NavItem) => item.routes.some(route => routeMatches(pathname, route));
+  const activeUtility = (routes: string[]) => routes.some(route => routeMatches(pathname, route));
+
+  if (useRail) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+        <View style={styles.desktopBody}>
+          <View
+            style={[styles.rail, compactRail && styles.railCompact]}
+            accessibilityLabel="Drustpoll primary navigation"
+          >
+            <Link href="/" asChild>
+              <Pressable accessibilityRole="link" accessibilityLabel="Drustpoll home" style={[styles.brandLockup, compactRail && styles.brandLockupCompact]}>
+                <BrandMark size={compactRail ? 38 : 42} />
+                {!compactRail ? (
+                  <View>
+                    <Text style={styles.brandWord}>drustpoll</Text>
+                    <Text style={styles.brandSub}>A more human social space</Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            </Link>
+
+            <View style={[styles.railItems, compactRail && styles.railItemsCompact]}>
+              {items.map(item => {
+                const active = activeFor(item);
+                const label = t(item.key);
+                const isCreate = item.key === 'createNav';
+                return (
+                  <Link key={item.href} href={item.href as any} asChild>
+                    <Pressable
+                      accessibilityRole="link"
+                      accessibilityLabel={label}
+                      accessibilityState={{ selected: active }}
+                      style={({ pressed }) => [
+                        styles.railItem,
+                        compactRail && styles.railItemCompact,
+                        active && styles.railActive,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <View style={[
+                        styles.railIcon,
+                        active && styles.railIconActive,
+                        isCreate && styles.railCreateIcon,
+                      ]}>
+                        <Icon name={item.icon} size={20} color={isCreate ? colors.white : active ? colors.brand : colors.muted} />
+                      </View>
+                      {!compactRail ? (
+                        <View style={styles.railLabelWrap}>
+                          <Text style={[styles.railLabel, active && styles.labelActive]}>{label}</Text>
+                          {active ? <View style={styles.railMark} /> : null}
+                        </View>
+                      ) : null}
+                    </Pressable>
+                  </Link>
+                );
+              })}
+            </View>
+
+            <View style={[styles.railFoot, compactRail && styles.railFootCompact]}>
+              <View style={styles.footRule} />
+              {utilityItems.map(item => {
+                const active = activeUtility(item.routes);
+                const label = t(item.key);
+                return (
+                  <Link key={item.href} href={item.href as any} asChild>
+                    <Pressable
+                      accessibilityRole="link"
+                      accessibilityLabel={label}
+                      accessibilityState={{ selected: active }}
+                      style={({ pressed }) => [
+                        styles.utilityItem,
+                        compactRail && styles.utilityItemCompact,
+                        active && styles.utilityActive,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <Icon name={item.icon} size={18} color={active ? colors.brand : colors.muted} />
+                      {!compactRail ? <Text style={[styles.utilityLabel, active && styles.labelActive]}>{label}</Text> : null}
+                    </Pressable>
+                  </Link>
+                );
+              })}
+            </View>
+          </View>
+          <View style={styles.desktopContent}>{children}</View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+      <View style={styles.body}>{children}</View>
+      <View style={styles.dock} accessibilityRole="tablist" accessibilityLabel="Drustpoll primary navigation">
+        <View style={styles.dockInner}>
+          {items.map(item => {
+            const active = activeFor(item);
+            const label = t(item.key);
+            const isCreate = item.key === 'createNav';
+            return (
+              <Link key={item.href} href={item.href as any} asChild>
+                <Pressable
+                  accessibilityRole="tab"
+                  accessibilityLabel={label}
+                  accessibilityState={{ selected: active }}
+                  style={({ pressed }) => [styles.dockItem, pressed && styles.pressed]}
+                >
+                  <View style={[
+                    styles.dockIcon,
+                    isCreate && styles.createIcon,
+                    active && !isCreate && styles.dockIconActive,
+                  ]}>
+                    <Icon name={item.icon} size={isCreate ? 22 : 19} color={isCreate ? colors.white : active ? colors.brand : colors.muted} />
+                    {active && !isCreate ? <View style={styles.activeTick} /> : null}
+                  </View>
+                  <Text numberOfLines={1} style={[styles.dockLabel, active && styles.dockLabelActive, isCreate && styles.createLabel]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              </Link>
+            );
+          })}
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.canvas },
+  body: { flex: 1, paddingBottom: 90 },
+  desktopBody: { flex: 1, flexDirection: 'row', minHeight: 0 },
+  desktopContent: { flex: 1, minWidth: 0, minHeight: 0 },
+  rail: {
+    width: 224,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 14,
+    backgroundColor: colors.canvas,
+    borderRightWidth: 1,
+    borderRightColor: colors.line,
+  },
+  railCompact: { width: 76, alignItems: 'center', paddingHorizontal: 9 },
+  brandLockup: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 4 },
+  brandLockupCompact: { justifyContent: 'center', paddingHorizontal: 0 },
+  brandWord: { fontSize: 15, fontWeight: '800', letterSpacing: -0.4, color: colors.ink },
+  brandSub: { fontSize: 10, color: colors.muted, marginTop: 2 },
+  railItems: { width: '100%', gap: 4, marginTop: 30 },
+  railItemsCompact: { alignItems: 'center', marginTop: 24 },
+  railItem: { minHeight: 52, borderRadius: radius.md, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  railItemCompact: { width: 54, minHeight: 54, justifyContent: 'center', paddingHorizontal: 0 },
+  railActive: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, ...elevation.low },
+  railIcon: { width: 38, height: 38, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  railIconActive: { backgroundColor: colors.brandSoft },
+  railCreateIcon: { backgroundColor: colors.brand },
+  railLabelWrap: { flex: 1, minWidth: 0, gap: 3 },
+  railLabel: { fontSize: type.bodySM, color: colors.muted, fontWeight: '700' },
+  labelActive: { color: colors.ink, fontWeight: '800' },
+  railMark: { height: 2, width: 18, borderRadius: 2, backgroundColor: colors.accent },
+  railFoot: { width: '100%', marginTop: 'auto', gap: 4 },
+  railFootCompact: { alignItems: 'center' },
+  footRule: { height: 1, backgroundColor: colors.line, marginBottom: 6 },
+  utilityItem: { minHeight: 42, paddingHorizontal: 10, borderRadius: radius.sm, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  utilityItemCompact: { width: 54, justifyContent: 'center', paddingHorizontal: 0 },
+  utilityActive: { backgroundColor: colors.brandSoft },
+  utilityLabel: { fontSize: type.labelMD, color: colors.muted, fontWeight: '700' },
+  pressed: { opacity: 0.76, transform: [{ scale: 0.985 }] },
+  dock: { position: 'absolute', left: 8, right: 8, bottom: 8, alignItems: 'center' },
+  dockInner: {
+    width: '100%',
+    maxWidth: 560,
+    minHeight: 70,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 19,
+    paddingHorizontal: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...elevation.medium,
+  },
+  dockItem: { flex: 1, minWidth: 0, minHeight: 62, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  dockIcon: { width: 38, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  dockIconActive: { backgroundColor: colors.brandSoft },
+  activeTick: { position: 'absolute', bottom: -2, width: 13, height: 2, borderRadius: 2, backgroundColor: colors.brand },
+  createIcon: { width: 40, height: 38, borderRadius: 13, backgroundColor: colors.brand },
+  dockLabel: { maxWidth: '100%', fontSize: 9, color: colors.muted, fontWeight: '700', letterSpacing: -0.1 },
+  dockLabelActive: { color: colors.ink, fontWeight: '800' },
+  createLabel: { color: colors.brand, fontWeight: '800' },
+});

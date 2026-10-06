@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api } from './request';
 export async function getPrivacy(){return api<any>('/v1/privacy');}
 export async function updatePrivacy(input:any){return api<any>('/v1/privacy',{method:'PUT',body:JSON.stringify(input)});}
 export async function getHiddenTerms(){return api<any>('/v1/privacy/hidden-terms');}

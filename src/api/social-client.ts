@@ -1,6 +1,11 @@
-import { api } from './client';
+import { api } from './request';
 
 export async function createPost(input:any){return api<{id:string;createdAt:string}>('/v1/posts',{method:'POST',body:JSON.stringify(input)});}
+export type MediaUploadIntent={assetId:string;storageKey:string;uploadUrl:string;status:string;maxBytes:number};
+export type MediaAssetStatus={id:string;media_type:'image'|'video';status:string;moderation_status:string};
+export async function createMediaUploadIntent(type:'image'|'video',mime:string,filename:string,byteSize:number){return api<MediaUploadIntent>('/v1/media/upload-intent',{method:'POST',body:JSON.stringify({type,mime,filename,byteSize})});}
+export async function completeMediaUpload(assetId:string,input:{mime:string;width?:number;height?:number;durationMs?:number}){return api<any>(`/v1/media/${encodeURIComponent(assetId)}/complete`,{method:'POST',body:JSON.stringify(input)});}
+export async function getMediaAssetStatus(assetId:string){return api<MediaAssetStatus>(`/v1/media/${encodeURIComponent(assetId)}`);}
 export async function getMyProfile(){return api<{profile:any|null}>('/v1/social/me/profile');}
 /** Profile surface contract served by GET /v1/profiles/:id (and /v1/profiles/me). */
 export type ProfileSurface={
@@ -28,7 +33,11 @@ export async function getCollection(id:string,limit=30,before?:string){return ap
 export async function getProfileShop(userId:string){return api<any>(`/v1/profiles/${encodeURIComponent(userId)}/shop`);}
 export async function followUser(targetUserId:string){return api<any>('/v1/social/follow',{method:'POST',body:JSON.stringify({targetUserId})});}
 export async function unfollowUser(targetUserId:string){return api<any>('/v1/social/follow',{method:'DELETE',body:JSON.stringify({targetUserId})});}
-export async function getConversations(limit=30){return api<any>(`/v1/messages/conversations?limit=${Math.min(Math.max(limit,1),50)}`);}
+export type ConversationSummary={id:string;created_at:string;updated_at:string;last_message_at:string;member_count:number;unread_count:number;request_state:'sent'|'accepted'|null};
+export type MessageRequest={request_id:string;conversation_id:string;requester_id:string;created_at:string;username:string;display_name:string|null;avatar_url:string|null;last_message_at:string};
+export async function getConversations(limit=30,folder:'all'|'unread'='all'){return api<{conversations:ConversationSummary[]}>(`/v1/messages/conversations?limit=${Math.min(Math.max(limit,1),50)}&folder=${folder}`);}
+export async function getMessageRequests(limit=50){return api<{requests:MessageRequest[]}>(`/v1/messages/requests?limit=${Math.min(Math.max(limit,1),100)}`);}
+export async function respondToMessageRequest(id:string,decision:'accept'|'decline'){return api<any>(`/v1/messages/requests/${encodeURIComponent(id)}`,{method:'POST',body:JSON.stringify({decision})});}
 export async function createConversation(participantIds:string[]){return api<any>('/v1/messages/conversations',{method:'POST',body:JSON.stringify({participantIds})});}
 export async function markConversationRead(id:string){return api<any>(`/v1/messages/conversations/${encodeURIComponent(id)}/read`,{method:'POST'});}
 export async function getMessages(id:string,limit=50,before?:string){return api<any>(`/v1/messages/conversations/${encodeURIComponent(id)}/messages?limit=${Math.min(Math.max(limit,1),100)}${before?`&before=${encodeURIComponent(before)}`:''}`);}

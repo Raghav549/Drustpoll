@@ -10,7 +10,7 @@ shop_affinity AS(SELECT p.shop_id,SUM(b.signal*EXP(-GREATEST(0,EXTRACT(EPOCH FRO
 category_affinity AS(SELECT lower(COALESCE(p.category,'')) category,SUM(b.signal) signal FROM products p JOIN behavior b ON b.product_id=p.id WHERE COALESCE(p.category,'')<>'' GROUP BY lower(COALESCE(p.category,''))),
 seller_quality AS(SELECT s.id shop_id,LEAST(1,GREATEST(0,(COALESCE((SELECT AVG(CASE WHEN o.status IN('delivered','paid') THEN 1 ELSE 0 END) FROM orders o JOIN order_lines ol ON ol.order_id=o.id JOIN products pp ON pp.id=ol.product_id WHERE pp.shop_id=s.id),.5)))) quality FROM shops s),
 price_stats AS(SELECT AVG(p.price_minor)::double precision avg_price FROM products p WHERE p.status='active' AND p.inventory>0),
-raw AS(SELECT p.id,p.shop_id,p.title,p.description,p.price_minor,p.currency,p.inventory,p.status,p.category,p.created_at,
+raw AS(SELECT p.id,p.shop_id,p.title,p.description,p.price_minor,p.currency,p.inventory,p.status,p.category,p.created_at,COALESCE((SELECT md.storage_key FROM product_media_metadata md WHERE md.product_id=p.id AND md.media_type='image' ORDER BY md.sort_order,md.created_at LIMIT 1),(SELECT pm.storage_key FROM product_media pm WHERE pm.product_id=p.id ORDER BY pm.sort_order LIMIT 1)) storage_key,
 CASE WHEN b.signal IS NULL THEN .15 ELSE LEAST(1,GREATEST(0,(b.signal+1)/4.0)) END behavior_relevance,
 CASE WHEN s.owner_id IN(SELECT followed_id FROM followed) THEN .9 ELSE .25 END relationship,
 CASE WHEN p.inventory>20 THEN 1.0 WHEN p.inventory>5 THEN .8 ELSE .55 END availability,
